@@ -1,0 +1,220 @@
+import React from "react";
+import Link from "next/link";
+import { prisma } from "@/lib/db/prisma";
+import { Search, MapPin, GraduationCap } from "lucide-react";
+import { HOME_BRIEF } from "./home-brief";
+import { JobCard } from "@/components/jobs/JobCard";
+import { ArticleCard } from "@/components/content/ArticleCard";
+
+export const revalidate = 60;
+
+function HeroLetter() {
+  return (
+    <img
+      src="/illustrations/hero-letter.png"
+      alt=""
+      className="hidden lg:block shrink-0 w-[min(22vw,220px)] h-auto -mr-4 select-none pointer-events-none motion-safe:animate-[hero-drift_4.8s_ease-in-out_infinite_alternate]"
+    />
+  );
+}
+
+function HeroPlane() {
+  return (
+    <img
+      src="/illustrations/hero-plane.png?v=2"
+      alt=""
+      className="hidden lg:block shrink-0 w-[min(28vw,280px)] h-auto ml-6 lg:ml-8 select-none pointer-events-none"
+    />
+  );
+}
+
+export default async function HomePage() {
+  const [featuredJobs, activeCourses, recentArticles] = await Promise.all([
+    prisma.job.findMany({
+      where: {
+        status: "PUBLISHED",
+        OR: [{ applicationDeadline: null }, { applicationDeadline: { gte: new Date() } }],
+      },
+      include: {
+        company: { select: { name: true, tradeName: true } },
+        category: true,
+      },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+    }),
+    prisma.course.findMany({
+      where: { status: "ACTIVE" },
+      include: { provider: true },
+      orderBy: { createdAt: "desc" },
+      take: 3,
+    }),
+    prisma.article.findMany({
+      where: { status: "PUBLISHED" },
+      include: { category: true },
+      orderBy: { publishedAt: "desc" },
+      take: 2,
+    }),
+  ]);
+
+  return (
+    <div className="pb-16">
+      <section className="bg-white min-h-[calc(100dvh-72px)] flex flex-col justify-center">
+        <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-10 sm:py-12">
+          <div className="flex items-center justify-center gap-1 lg:gap-2">
+            <HeroLetter />
+            <div className="text-center max-w-xl">
+              <h1 className="text-[2rem] sm:text-[2.75rem] font-extrabold tracking-tight text-[#E65100] leading-[1.15]">
+                Encontre o emprego certo para você em Arcoverde
+              </h1>
+              <p className="mt-3 text-[#4B5563] text-[15px] max-w-xl mx-auto leading-relaxed">
+                Portal público e gratuito. Busque vagas, cadastre o currículo ou peça ajuda na Sala do Empreendedor.
+              </p>
+            </div>
+            <HeroPlane />
+          </div>
+
+          <form
+            action={HOME_BRIEF.searchAction}
+            method="GET"
+            className="mt-8 sm:mt-10 max-w-3xl mx-auto bg-[#F4F5F7] rounded-[28px] sm:rounded-full p-2 flex flex-col sm:flex-row sm:items-stretch"
+          >
+            <label htmlFor="q" className="sr-only">
+              Cargo ou palavra-chave
+            </label>
+            <div className="flex items-center gap-3 flex-1 px-4 min-h-[52px]">
+              <Search className="w-5 h-5 text-[#6B7280] shrink-0" aria-hidden="true" />
+              <input
+                id="q"
+                type="search"
+                name="q"
+                placeholder="Cargo, empresa ou palavra-chave"
+                className="w-full text-[15px] text-[#1A1A1A] placeholder:text-[#6B7280] bg-transparent focus:outline-none"
+              />
+            </div>
+            <div className="hidden sm:block w-px bg-[#D1D5DB] my-3" aria-hidden="true" />
+            <label htmlFor="cidade" className="sr-only">
+              Cidade
+            </label>
+            <div className="flex items-center gap-3 flex-1 px-4 min-h-[52px] border-t sm:border-t-0 border-[#E6E8EB]">
+              <MapPin className="w-5 h-5 text-[#6B7280] shrink-0" aria-hidden="true" />
+              <input
+                id="cidade"
+                type="text"
+                name="cidade"
+                defaultValue="Arcoverde"
+                placeholder="Cidade"
+                className="w-full text-[15px] text-[#1A1A1A] placeholder:text-[#6B7280] bg-transparent focus:outline-none"
+              />
+            </div>
+            <button
+              type="submit"
+              className="bg-[#1C1410] hover:bg-black text-white font-bold text-[15px] rounded-full min-h-[48px] px-7 sm:min-w-[120px]"
+            >
+              Buscar
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-12">
+        <div className="flex items-end justify-between gap-4 mb-6">
+          <h2 className="text-xl sm:text-2xl font-extrabold text-[#E65100]">Vagas em destaque</h2>
+          <Link href="/vagas" className="text-sm font-semibold text-[#E65100] hover:underline">
+            Ver todas
+          </Link>
+        </div>
+
+        {featuredJobs.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-[#E6E8EB] p-8 text-center">
+            <h3 className="font-bold text-[#1A1A1A]">Nenhuma vaga publicada no momento</h3>
+            <p className="text-sm text-[#4B5563] mt-2">Cadastre seu currículo para ser avisado quando saírem novas vagas.</p>
+            <Link href="/cadastro" className="inline-block mt-4 font-bold text-[#E65100] hover:underline">
+              Cadastrar currículo
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {featuredJobs.map((job) => (
+              <JobCard key={job.id} job={job} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-12">
+        <div className="bg-white rounded-2xl border border-[#E6E8EB] p-6 sm:p-8 flex flex-col sm:flex-row gap-5 sm:items-center">
+          <div className="w-12 h-12 rounded-full bg-[#F4F5F7] flex items-center justify-center shrink-0">
+            <MapPin className="w-6 h-6 text-[#1A1A1A]" aria-hidden="true" />
+          </div>
+          <div className="flex-1">
+            <h2 className="text-lg font-bold text-[#E65100]">Não consegue fazer o cadastro pela internet?</h2>
+            <p className="text-sm text-[#4B5563] mt-1 leading-relaxed">
+              Vá à Sala do Empreendedor ou à ACA. O cadastro assistido é gratuito: montamos o currículo com você.
+            </p>
+          </div>
+          <Link
+            href="/contato"
+            className="shrink-0 inline-flex justify-center bg-[#1C1410] hover:bg-black text-white text-sm font-bold px-5 py-2.5 rounded-full"
+          >
+            Ver endereço
+          </Link>
+        </div>
+      </section>
+
+      {activeCourses.length > 0 && (
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-12">
+          <div className="flex items-end justify-between gap-4 mb-6">
+            <h2 className="text-xl sm:text-2xl font-extrabold text-[#E65100]">Cursos gratuitos</h2>
+            <Link href="/cursos" className="text-sm font-semibold text-[#E65100] hover:underline">
+              Ver todos
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {activeCourses.map((course) => (
+              <article key={course.id} className="bg-white rounded-2xl border border-[#E6E8EB] p-6 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-xs text-[#6B7280]">
+                    <GraduationCap className="w-4 h-4" aria-hidden="true" />
+                    <span>{course.provider.name}</span>
+                    <span>·</span>
+                    <span>{course.modality}</span>
+                  </div>
+                  <h3 className="font-bold text-[#1A1A1A] mt-3 leading-snug">{course.title}</h3>
+                  <p className="text-sm text-[#6B7280] mt-2 line-clamp-3 leading-relaxed">{course.description}</p>
+                </div>
+                <Link
+                  href={`/cursos/${course.slug}`}
+                  className="mt-5 inline-flex justify-center text-sm font-bold text-[#1A1A1A] border border-[#E6E8EB] rounded-full py-2.5 hover:bg-[#F4F5F7]"
+                >
+                  Ver curso
+                </Link>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {recentArticles.length > 0 && (
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-12">
+          <div className="flex items-end justify-between gap-4 mb-6">
+            <h2 className="text-xl sm:text-2xl font-extrabold text-[#E65100]">Notícias e dicas</h2>
+            <Link href="/conteudos" className="text-sm font-semibold text-[#E65100] hover:underline">
+              Ver todas
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {recentArticles.map((article) => (
+              <ArticleCard
+                key={article.id}
+                href={`/conteudos/${article.slug}`}
+                title={article.title}
+                readTimeMinutes={article.readTimeMinutes}
+                coverImageUrl={article.coverImageUrl}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}

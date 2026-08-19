@@ -1,0 +1,480 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// 1. IDENTIDADE, AUTENTICAÇÃO E AUDITORIA
+// ==========================================
+
+model User {
+  id                    String    @id @default(cuid())
+  name                  String
+  email                 String    @unique
+  passwordHash          String?
+  supabaseUserId        String?   @unique
+  role                  String    @default("CANDIDATE") // CANDIDATE, COMPANY_MEMBER, ASSISTED_OPERATOR, ACA_ADMIN, MUNICIPAL_ADMIN, SUPER_ADMIN
+  isEmailVerified       Boolean   @default(false)
+  emailVerifyToken      String?
+  resetPasswordToken    String?
+  resetPasswordExpires  DateTime?
+  avatarUrl             String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  candidateProfile      CandidateProfile?
+  companyMemberships    CompanyMember[]
+  auditLogs             AuditLog[]
+  consents              Consent[]
+  deletionRequests      DeletionRequest[]
+  notifications         Notification[]
+  notificationPref      NotificationPreference?
+  assistedCandidates    CandidateProfile[] @relation("AssistedByOperator")
+  reviewedJobs          JobPublicationReview[]
+  createdJobs           Job[]             @relation("JobCreator")
+  statusHistories       ApplicationStatusHistory[]
+}
+
+model Consent {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type           String    // TERMS, PRIVACY, EMAIL_COMMUNICATION, WHATSAPP_COMMUNICATION
+  accepted       Boolean   @default(true)
+  ipAddress      String?
+  userAgent      String?
+  acceptedAt     DateTime  @default(now())
+  revokedAt      DateTime?
+}
+
+model AuditLog {
+  id             String    @id @default(cuid())
+  userId         String?
+  user           User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action         String    // e.g. "JOB_PUBLISHED", "APPLICATION_STATUS_UPDATED", "ASSISTED_REGISTRATION", "EXPORT_REPORT", "DATA_DELETION_REQUEST"
+  resourceType   String    // "Job", "Application", "CandidateProfile", "Company", "Export"
+  resourceId     String?
+  details        String?   // JSON string with non-sensitive diff or metadata
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime  @default(now())
+}
+
+model DeletionRequest {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reason         String?
+  status         String    @default("PENDING") // PENDING, PROCESSED, REJECTED
+  requestedAt    DateTime  @default(now())
+  processedAt    DateTime?
+  notes          String?
+}
+
+// ==========================================
+// 2. EMPRESAS E MEMBROS
+// ==========================================
+
+model Company {
+  id             String    @id @default(cuid())
+  name           String
+  tradeName      String?
+  cnpj           String?   @unique
+  email          String?
+  phone          String?
+  website        String?
+  city           String    @default("Arcoverde")
+  state          String    @default("PE")
+  address        String?
+  description    String?
+  logoUrl        String?
+  isVerified     Boolean   @default(false)
+  isConfidentialDefault Boolean @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  members        CompanyMember[]
+  jobs           Job[]
+}
+
+model CompanyMember {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId      String
+  company        Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  role           String    @default("MEMBER") // OWNER, ADMIN, MEMBER
+  createdAt      DateTime  @default(now())
+
+  @@unique([userId, companyId])
+}
+
+// ==========================================
+// 3. VAGAS E MODERAÇÃO
+// ==========================================
+
+model JobCategory {
+  id             String    @id @default(cuid())
+  name           String    @unique
+  slug           String    @unique
+  description    String?
+  icon           String?
+  order          Int       @default(0)
+  createdAt      DateTime  @default(now())
+
+  jobs           Job[]
+}
+
+model Job {
+  id                   String       @id @default(cuid())
+  title                String
+  slug                 String       @unique
+  companyId            String
+  company              Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdById          String?
+  createdBy            User?        @relation("JobCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  categoryId           String
+  category             JobCategory  @relation(fields: [categoryId], references: [id])
+  
+  summary              String
+  description          String
+  contractType         String       // CLT, PJ, ESTAGIO, TEMPORARIO, APRENDIZ
+  workplaceType        String       // PRESENCIAL, HIBRIDO, REMOTO
+  city                 String       @default("Arcoverde")
+  state                String       @default("PE")
+  locationDescription  String?
+  
+  salaryMin            Float?
+  salaryMax            Float?
+  salaryExact          Float?
+  hideSalary           Boolean      @default(true)
+  
+  vacanciesCount       Int          @default(1)
+  educationLevel       String       // FUNDAMENTAL, MEDIO, TECNICO, SUPERIOR, POS
+  experienceRequired   String?      // SEM_EXPERIENCIA, 6_MESES, 1_ANO, 2_ANOS, 3_ANOS_MAIS
+  driverLicense        String?      // NENHUMA, A, B, AB, C, D, E
+  
+  benefits             String?      // JSON or comma-separated
+  requirements         String?      // Plain text / Markdown list
+  skillsText           String?      // Comma-separated skills
+  tags                 String?      // Comma-separated tags
+  
+  isConfidential       Boolean      @default(false)
+  applicationDeadline  DateTime?
+  analysisPeriod       String?
+  status               String       @default("DRAFT") // DRAFT, PENDING_REVIEW, PUBLISHED, PAUSED, CLOSED, REJECTED, ARCHIVED
+  rejectionReason      String?
+  viewsCount           Int          @default(0)
+  
+  publishedAt          DateTime?
+  closedAt             DateTime?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  reviews              JobPublicationReview[]
+  applications         Application[]
+}
+
+model JobPublicationReview {
+  id             String    @id @default(cuid())
+  jobId          String
+  job            Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  reviewerId     String
+  reviewer       User      @relation(fields: [reviewerId], references: [id])
+  status         String    // APPROVED, REJECTED, ADJUSTMENT_REQUESTED
+  notes          String?
+  createdAt      DateTime  @default(now())
+}
+
+// ==========================================
+// 4. CANDIDATOS, CURRÍCULOS E ANEXOS
+// ==========================================
+
+model CandidateProfile {
+  id                   String    @id @default(cuid())
+  userId               String    @unique
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName             String
+  phone                String?
+  whatsapp             String?
+  city                 String    @default("Arcoverde")
+  state                String    @default("PE")
+  neighborhood         String?
+  birthDate            DateTime?
+  educationLevel       String    @default("MEDIO")
+  driverLicense        String?   @default("NENHUMA")
+  professionalHeadline String?
+  summary              String?
+  availability         String?   // IMEDIATA, MANHA, TARDE, NOITE, INTEGRAL
+  accessibilityNeeds   String?   // Opcional e restrito
+  
+  isAssisted           Boolean   @default(false)
+  assistedById         String?
+  assistedBy           User?     @relation("AssistedByOperator", fields: [assistedById], references: [id])
+  assistedUnit         String?   // e.g. "Sala do Empreendedor", "ACA Atendimento"
+  assistedNotes        String?
+  
+  emailConsent         Boolean   @default(true)
+  whatsappConsent      Boolean   @default(false)
+  
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  resumeVersions       ResumeVersion[]
+  documents            CandidateDocument[]
+  applications         Application[]
+}
+
+model ResumeVersion {
+  id                   String             @id @default(cuid())
+  candidateId          String
+  candidate            CandidateProfile   @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  versionNumber        Int                @default(1)
+  headline             String?
+  summary              String?
+  educationLevel       String?
+  driverLicense        String?
+  skillsSnapshot       String?            // JSON or comma-separated list
+  experiencesSnapshot  String?            // JSON array snapshot
+  educationsSnapshot   String?            // JSON array snapshot
+  coursesSnapshot      String?            // JSON array snapshot
+  isCurrent            Boolean            @default(true)
+  createdAt            DateTime           @default(now())
+
+  experiences          ResumeExperience[]
+  educations           ResumeEducation[]
+  courses              ResumeCourse[]
+  applications         Application[]
+}
+
+model ResumeExperience {
+  id             String         @id @default(cuid())
+  resumeId       String
+  resume         ResumeVersion  @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+  company        String
+  position       String
+  startDate      DateTime
+  endDate        DateTime?
+  isCurrent      Boolean        @default(false)
+  description    String?
+  createdAt      DateTime       @default(now())
+}
+
+model ResumeEducation {
+  id             String         @id @default(cuid())
+  resumeId       String
+  resume         ResumeVersion  @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+  institution    String
+  course         String
+  level          String         // FUNDAMENTAL, MEDIO, TECNICO, SUPERIOR, POS
+  startDate      DateTime?
+  endDate        DateTime?
+  status         String         // CONCLUIDO, EM_ANDAMENTO, TRANCADO
+  createdAt      DateTime       @default(now())
+}
+
+model ResumeCourse {
+  id             String         @id @default(cuid())
+  resumeId       String
+  resume         ResumeVersion  @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+  institution    String
+  title          String
+  completionDate DateTime?
+  hours          Int?
+  createdAt      DateTime       @default(now())
+}
+
+model CandidateDocument {
+  id             String           @id @default(cuid())
+  candidateId    String
+  candidate      CandidateProfile @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  title          String
+  fileKey        String           // Chave no storage / caminho relativo
+  fileName       String
+  fileSize       Int
+  mimeType       String
+  documentType   String           @default("RESUME") // RESUME, CERTIFICATE, DIPLOMA, OTHER
+  scanStatus     String           @default("CLEAN")  // PENDING, CLEAN, REJECTED
+  uploadedById   String?
+  createdAt      DateTime         @default(now())
+}
+
+// ==========================================
+// 5. CANDIDATURAS E ACOMPANHAMENTO
+// ==========================================
+
+model Application {
+  id                String            @id @default(cuid())
+  jobId             String
+  job               Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  candidateId       String
+  candidate         CandidateProfile  @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  resumeVersionId   String?
+  resumeVersion     ResumeVersion?    @relation(fields: [resumeVersionId], references: [id], onDelete: SetNull)
+  
+  origin            String            @default("SELF") // SELF, ASSISTED, ADMIN
+  status            String            @default("SUBMITTED") // SUBMITTED, UNDER_REVIEW, CONTACT_SELECTED, INTERVIEW_SCHEDULED, APPROVED, NOT_SELECTED, WITHDRAWN
+  rejectionReason   String?
+  coverNote         String?
+  
+  matchScore        Int               @default(0) // 0 - 100
+  matchExplanation  String?           // JSON array of strings
+  
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  statusHistory     ApplicationStatusHistory[]
+  interview         Interview?
+
+  @@unique([jobId, candidateId])
+}
+
+model ApplicationStatusHistory {
+  id             String       @id @default(cuid())
+  applicationId  String
+  application    Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  status         String
+  notes          String?
+  changedById    String?
+  changedBy      User?        @relation(fields: [changedById], references: [id], onDelete: SetNull)
+  createdAt      DateTime     @default(now())
+}
+
+model Interview {
+  id             String       @id @default(cuid())
+  applicationId  String       @unique
+  application    Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  scheduledAt    DateTime
+  location       String?      // Endereço ou link online
+  instructions   String?
+  status         String       @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED
+  createdAt      DateTime     @default(now())
+}
+
+// ==========================================
+// 6. CURSOS, CONTEÚDOS E LINKS ÚTEIS
+// ==========================================
+
+model CourseProvider {
+  id             String    @id @default(cuid())
+  name           String    @unique // e.g. "Prefeitura de Arcoverde", "Sebrae", "Senai", "Sesc", "ACA"
+  logoUrl        String?
+  website        String?
+  createdAt      DateTime  @default(now())
+
+  courses        Course[]
+}
+
+model Course {
+  id                   String          @id @default(cuid())
+  title                String
+  slug                 String          @unique
+  providerId           String
+  provider             CourseProvider  @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  description          String
+  targetAudience       String?
+  modality             String          @default("ONLINE") // ONLINE, PRESENCIAL, HIBRIDO
+  location             String?         @default("Arcoverde - PE")
+  hours                Int?
+  vacancies            Int?
+  externalUrl          String
+  enrollmentStart      DateTime?
+  enrollmentEnd        DateTime?
+  courseStart          DateTime?
+  courseEnd            DateTime?
+  status               String          @default("ACTIVE") // ACTIVE, EXPIRED, ARCHIVED
+  clicksCount          Int             @default(0)
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  clickEvents          CourseClickEvent[]
+}
+
+model CourseClickEvent {
+  id             String    @id @default(cuid())
+  courseId       String
+  course         Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  clickedAt      DateTime  @default(now())
+  referrer       String?
+  userAgent      String?
+}
+
+model ContentCategory {
+  id             String    @id @default(cuid())
+  name           String    @unique
+  slug           String    @unique
+  order          Int       @default(0)
+  createdAt      DateTime  @default(now())
+
+  articles       Article[]
+}
+
+model Article {
+  id             String           @id @default(cuid())
+  title          String
+  slug           String           @unique
+  summary        String
+  content        String           // Markdown or HTML
+  coverImageUrl  String?
+  categoryId     String
+  category       ContentCategory  @relation(fields: [categoryId], references: [id])
+  authorName     String           @default("Equipe Emprega Arcoverde")
+  status         String           @default("PUBLISHED") // DRAFT, PUBLISHED, ARCHIVED
+  tags           String?          // Comma-separated
+  readTimeMinutes Int             @default(3)
+  publishedAt    DateTime?        @default(now())
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+model UsefulLink {
+  id             String    @id @default(cuid())
+  title          String
+  description    String
+  url            String
+  category       String    // "Trabalhador", "Empreendedor", "Cidadão", "Governo"
+  icon           String?
+  order          Int       @default(0)
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+}
+
+model SiteSetting {
+  id             String    @id @default(cuid())
+  key            String    @unique
+  value          String
+  description    String?
+  updatedAt      DateTime  @updatedAt
+}
+
+// ==========================================
+// 7. NOTIFICAÇÕES E ANALYTICS
+// ==========================================
+
+model NotificationPreference {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailEnabled   Boolean   @default(true)
+  whatsappEnabled Boolean  @default(false)
+  jobAlerts      Boolean   @default(true)
+  statusAlerts   Boolean   @default(true)
+}
+
+model Notification {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title          String
+  message        String
+  type           String    // APPLICATION_UPDATE, JOB_ALERT, SYSTEM
+  link           String?
+  isRead         Boolean   @default(false)
+  channel        String    @default("IN_APP") // IN_APP, EMAIL, WHATSAPP
+  status         String    @default("DELIVERED") // PENDING, DELIVERED, FAILED
+  createdAt      DateTime  @default(now())
+}

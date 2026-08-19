@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --brand-primary: 230 81 0;
+    --brand-ink: 26 26 26;
+  }
+
+  body {
+    @apply bg-[#F4F5F7] text-[#1A1A1A] antialiased min-h-screen flex flex-col font-sans;
+  }
+
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    @apply outline-none ring-2 ring-[#E65100] ring-offset-2 ring-offset-white;
+  }
+}
+
+::selection {
+  background: #e65100;
+  color: #fff;
+}
+
+input,
+textarea,
+select {
+  caret-color: #e65100;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f4f5f7;
+}
+::-webkit-scrollbar-thumb {
+  background: #c5c9ce;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #e65100;
+}
+
+@keyframes hero-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(10px, -12px, 0);
+  }
+}
+
+@media print {
+  header,
+  footer {
+    display: none !important;
+  }
+  main {
+    display: block !important;
+  }
+}
