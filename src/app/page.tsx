@@ -7,12 +7,22 @@ import { HOME_BRIEF } from "./home-brief";
 import { JobCard } from "@/components/jobs/JobCard";
 import { ArticleCard } from "@/components/content/ArticleCard";
 
+function HeroPlaneMobile() {
+  return (
+    <img
+      src="/illustrations/hero-plane.png?v=2"
+      alt=""
+      className="lg:hidden mx-auto w-[min(72vw,280px)] h-auto mb-5 select-none pointer-events-none"
+    />
+  );
+}
+
 function HeroLetter() {
   return (
     <img
       src="/illustrations/hero-letter.png"
       alt=""
-      className="shrink-0 w-[56px] sm:w-[72px] md:w-[100px] lg:w-[min(22vw,220px)] h-auto -mr-1 sm:-mr-2 lg:-mr-4 select-none pointer-events-none lg:motion-safe:animate-[hero-drift_4.8s_ease-in-out_infinite_alternate]"
+      className="hidden lg:block shrink-0 w-[min(22vw,220px)] h-auto -mr-4 select-none pointer-events-none motion-safe:animate-[hero-drift_4.8s_ease-in-out_infinite_alternate]"
     />
   );
 }
@@ -22,7 +32,7 @@ function HeroPlane() {
     <img
       src="/illustrations/hero-plane.png?v=2"
       alt=""
-      className="shrink-0 w-[64px] sm:w-[80px] md:w-[110px] lg:w-[min(28vw,280px)] h-auto ml-1 sm:ml-2 lg:ml-6 xl:ml-8 select-none pointer-events-none"
+      className="hidden lg:block shrink-0 w-[min(28vw,280px)] h-auto ml-6 lg:ml-8 select-none pointer-events-none"
     />
   );
 }
@@ -62,15 +72,16 @@ export default async function HomePage() {
 
   return (
     <div className="pb-16">
-      <section className="bg-white min-h-[calc(100dvh-72px)] flex flex-col justify-center">
-        <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-8 sm:py-12">
-          <div className="flex items-center justify-center gap-0 sm:gap-1 lg:gap-2">
+      <section className="bg-white min-h-[calc(100dvh-72px)] flex flex-col justify-start pt-6 lg:justify-center lg:pt-0">
+        <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-12">
+          <HeroPlaneMobile />
+          <div className="flex items-center justify-center gap-1 lg:gap-2">
             <HeroLetter />
-            <div className="text-center flex-1 min-w-0 max-w-xl px-1 sm:px-2">
-              <h1 className="text-[1.35rem] sm:text-[2rem] md:text-[2.75rem] font-extrabold tracking-tight text-[#E65100] leading-[1.15]">
+            <div className="text-center max-w-xl">
+              <h1 className="text-[2rem] sm:text-[2.75rem] font-extrabold tracking-tight text-[#E65100] leading-[1.15]">
                 Encontre o emprego certo para você em Arcoverde
               </h1>
-              <p className="mt-2 sm:mt-3 text-[#4B5563] text-[13px] sm:text-[15px] max-w-xl mx-auto leading-relaxed">
+              <p className="mt-3 text-[#4B5563] text-[15px] max-w-xl mx-auto leading-relaxed">
                 Portal público e gratuito. Busque vagas, cadastre o currículo ou peça ajuda na Sala do Empreendedor.
               </p>
             </div>
@@ -80,7 +91,7 @@ export default async function HomePage() {
           <form
             action={HOME_BRIEF.searchAction}
             method="GET"
-            className="mt-6 sm:mt-8 lg:mt-10 max-w-3xl mx-auto bg-[#F4F5F7] rounded-[28px] sm:rounded-full p-2 flex flex-col sm:flex-row sm:items-stretch"
+            className="mt-8 sm:mt-10 max-w-3xl mx-auto bg-[#F4F5F7] rounded-[28px] sm:rounded-full p-2 flex flex-col sm:flex-row sm:items-stretch"
           >
             <label htmlFor="q" className="sr-only">
               Cargo ou palavra-chave
