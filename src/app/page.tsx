@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/db/prisma";
+import { withDb } from "@/lib/db/safe";
 import { Search, MapPin, GraduationCap } from "lucide-react";
 import { HOME_BRIEF } from "./home-brief";
 import { JobCard } from "@/components/jobs/JobCard";
@@ -27,32 +28,36 @@ function HeroPlane() {
 }
 
 export default async function HomePage() {
-  const [featuredJobs, activeCourses, recentArticles] = await Promise.all([
-    prisma.job.findMany({
-      where: {
-        status: "PUBLISHED",
-        OR: [{ applicationDeadline: null }, { applicationDeadline: { gte: new Date() } }],
-      },
-      include: {
-        company: { select: { name: true, tradeName: true } },
-        category: true,
-      },
-      orderBy: { createdAt: "desc" },
-      take: 6,
-    }),
-    prisma.course.findMany({
-      where: { status: "ACTIVE" },
-      include: { provider: true },
-      orderBy: { createdAt: "desc" },
-      take: 3,
-    }),
-    prisma.article.findMany({
-      where: { status: "PUBLISHED" },
-      include: { category: true },
-      orderBy: { publishedAt: "desc" },
-      take: 2,
-    }),
-  ]);
+  const [featuredJobs, activeCourses, recentArticles] = await withDb(
+    () =>
+      Promise.all([
+        prisma.job.findMany({
+          where: {
+            status: "PUBLISHED",
+            OR: [{ applicationDeadline: null }, { applicationDeadline: { gte: new Date() } }],
+          },
+          include: {
+            company: { select: { name: true, tradeName: true } },
+            category: true,
+          },
+          orderBy: { createdAt: "desc" },
+          take: 6,
+        }),
+        prisma.course.findMany({
+          where: { status: "ACTIVE" },
+          include: { provider: true },
+          orderBy: { createdAt: "desc" },
+          take: 3,
+        }),
+        prisma.article.findMany({
+          where: { status: "PUBLISHED" },
+          include: { category: true },
+          orderBy: { publishedAt: "desc" },
+          take: 2,
+        }),
+      ]),
+    [[], [], []],
+  );
 
   return (
     <div className="pb-16">

@@ -1,12 +1,17 @@
 import React from "react";
 import { prisma } from "@/lib/db/prisma";
+import { withDb } from "@/lib/db/safe";
 import { ExternalLink, Link2, ShieldCheck } from "lucide-react";
 
 export default async function LinksUteisPage() {
-  const links = await prisma.usefulLink.findMany({
-    where: { isActive: true },
-    orderBy: { order: "asc" },
-  });
+  const links = await withDb(
+    () =>
+      prisma.usefulLink.findMany({
+        where: { isActive: true },
+        orderBy: { order: "asc" },
+      }),
+    [],
+  );
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">

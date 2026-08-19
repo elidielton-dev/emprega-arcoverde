@@ -1,17 +1,22 @@
 import React from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/db/prisma";
+import { withDb } from "@/lib/db/safe";
 import { GraduationCap, ExternalLink, Calendar, MapPin, Clock, Users } from "lucide-react";
 
 export default async function CursosPage() {
-  const [courses, providers] = await Promise.all([
-    prisma.course.findMany({
-      where: { status: "ACTIVE" },
-      include: { provider: true },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.courseProvider.findMany({ orderBy: { name: "asc" } }),
-  ]);
+  const [courses, providers] = await withDb(
+    () =>
+      Promise.all([
+        prisma.course.findMany({
+          where: { status: "ACTIVE" },
+          include: { provider: true },
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.courseProvider.findMany({ orderBy: { name: "asc" } }),
+      ]),
+    [[], []],
+  );
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">

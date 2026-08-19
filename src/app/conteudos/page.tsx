@@ -1,14 +1,19 @@
 import React from "react";
 import { prisma } from "@/lib/db/prisma";
+import { withDb } from "@/lib/db/safe";
 import { BookOpen } from "lucide-react";
 import { ArticleCard } from "@/components/content/ArticleCard";
 
 export default async function ConteudosPage() {
-  const articles = await prisma.article.findMany({
-    where: { status: "PUBLISHED" },
-    include: { category: true },
-    orderBy: { publishedAt: "desc" },
-  });
+  const articles = await withDb(
+    () =>
+      prisma.article.findMany({
+        where: { status: "PUBLISHED" },
+        include: { category: true },
+        orderBy: { publishedAt: "desc" },
+      }),
+    [],
+  );
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">

@@ -5,6 +5,7 @@ import { Search, Briefcase, MapPin, Filter } from "lucide-react";
 import { JobCard } from "@/components/jobs/JobCard";
 import { JobPagination } from "@/components/jobs/JobPagination";
 import { containsInsensitive } from "@/lib/db/search";
+import { withDb } from "@/lib/db/safe";
 
 const PAGE_SIZE = 6;
 
@@ -77,30 +78,38 @@ export default async function VagasPage({ searchParams }: VagasPageProps) {
     where.driverLicense = cnh;
   }
 
-  const [total, categories] = await Promise.all([
-    prisma.job.count({ where }),
-    prisma.jobCategory.findMany({ orderBy: { order: "asc" } }),
-  ]);
+  const [total, categories] = await withDb(
+    () =>
+      Promise.all([
+        prisma.job.count({ where }),
+        prisma.jobCategory.findMany({ orderBy: { order: "asc" } }),
+      ]),
+    [0, []],
+  );
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const page = Math.min(requestedPage, totalPages);
-  const jobs = await prisma.job.findMany({
-    where,
-    include: {
-      company: {
-        select: {
-          name: true,
-          tradeName: true,
-          city: true,
+  const jobs = await withDb(
+    () =>
+      prisma.job.findMany({
+        where,
+        include: {
+          company: {
+            select: {
+              name: true,
+              tradeName: true,
+              city: true,
+            },
+          },
+          category: true,
+          _count: { select: { applications: true } },
         },
-      },
-      category: true,
-      _count: { select: { applications: true } },
-    },
-    orderBy: { createdAt: "desc" },
-    skip: (page - 1) * PAGE_SIZE,
-    take: PAGE_SIZE,
-  });
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * PAGE_SIZE,
+        take: PAGE_SIZE,
+      }),
+    [],
+  );
 
   const filters = {
     q: query,
