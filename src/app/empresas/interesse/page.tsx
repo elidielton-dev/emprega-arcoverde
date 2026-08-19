@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { BrandLogo } from "@/components/ui/BrandLogo";
-import { MapPin, Phone } from "lucide-react";
+import { Building2, MapPin, Phone } from "lucide-react";
 import { companyInterestMessage, getCompanyContactChannels, whatsappLink } from "@/lib/company/contact";
 
 export default function EmpresaInteressePage() {
@@ -18,9 +18,19 @@ export default function EmpresaInteressePage() {
           <h1 className="text-2xl sm:text-3xl font-extrabold text-[#E65100] tracking-tight">
             Quero cadastrar minha empresa
           </h1>
+          <p className="text-sm text-[#4B5563] leading-relaxed max-w-lg mx-auto">
+            Gratuito para empresas de Arcoverde. Publique vagas e encontre candidatos da região.
+          </p>
         </div>
 
-        <div className="bg-white rounded-3xl border border-[#E6E8EB] p-6 sm:p-8">
+        <div className="bg-white rounded-3xl border border-[#E6E8EB] p-6 sm:p-8 space-y-5">
+          <div className="flex items-start gap-3">
+            <Building2 className="w-6 h-6 text-[#E65100] shrink-0 mt-0.5" />
+            <p className="text-sm text-[#1A1A1A] leading-relaxed">
+              Para cadastrar sua empresa, fale com a ACA ou com a Sala do Empreendedor pelo WhatsApp. Nossa equipe orienta o cadastro e libera o acesso para você divulgar vagas no portal.
+            </p>
+          </div>
+
           <div className="flex flex-col sm:flex-row gap-3">
             <a
               href={acaHref}
@@ -28,7 +38,7 @@ export default function EmpresaInteressePage() {
               rel="noopener noreferrer"
               className="flex-1 text-center bg-[#25D366] hover:bg-[#1ebe5a] text-white font-bold text-sm py-3 rounded-full"
             >
-              Falar com a ACA no WhatsApp
+              WhatsApp da ACA
             </a>
             <a
               href={prefeituraHref}
@@ -36,7 +46,7 @@ export default function EmpresaInteressePage() {
               rel="noopener noreferrer"
               className="flex-1 text-center bg-[#1C1410] hover:bg-black text-white font-bold text-sm py-3 rounded-full"
             >
-              Falar com a Prefeitura no WhatsApp
+              WhatsApp da Sala do Empreendedor
             </a>
           </div>
         </div>
