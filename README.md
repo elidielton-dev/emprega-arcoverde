@@ -29,9 +29,10 @@ npm install
 ```
 
 ### 2. Configurar Variáveis de Ambiente
-O arquivo `.env` já vem pré-configurado para desenvolvimento com SQLite zero-config:
+O arquivo `.env` já vem pré-configurado para desenvolvimento com PostgreSQL local:
 ```bash
 cp .env.example .env
+docker compose up -d
 ```
 
 ### 3. Inicializar o Banco e Carregar Dados de Demonstração
@@ -46,6 +47,25 @@ npm run dev
 ```
 
 Acesse o portal em: **[http://localhost:3000](http://localhost:3000)** (ou a porta indicada pelo terminal).
+
+---
+
+## Deploy na Vercel
+
+1. Importe o repositório `elidielton-dev/emprega-arcoverde` em [vercel.com/new](https://vercel.com/new).
+2. Cadastre as variáveis de ambiente **antes** do primeiro deploy:
+   - `DATABASE_URL` — connection string **Session pooler** do Postgres no Supabase (porta **6543**), com `?pgbouncer=true&sslmode=require`
+   - `AUTH_SECRET` — string longa aleatória
+   - `APP_URL` — URL do projeto na Vercel (`https://….vercel.app`)
+   - `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` — se for usar Google/LinkedIn
+3. No Supabase, em **Authentication → URL Configuration**, adicione `https://SEU-DOMINIO.vercel.app/auth/callback`.
+4. Depois do primeiro deploy, rode o seed **uma vez** apontando para o mesmo `DATABASE_URL`:
+   ```bash
+   npx prisma db push
+   npm run db:seed
+   ```
+
+O Postgres do Docker na sua máquina **não** funciona na Vercel. O banco precisa ser o do Supabase (ou outro Postgres na nuvem).
 
 ---
 

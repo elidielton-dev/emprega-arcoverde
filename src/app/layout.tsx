@@ -5,6 +5,8 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { getSession } from "@/lib/auth/session";
 
+export const dynamic = "force-dynamic";
+
 const archivo = Archivo({
   subsets: ["latin"],
   variable: "--font-sans",

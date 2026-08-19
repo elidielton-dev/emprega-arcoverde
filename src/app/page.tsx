@@ -6,8 +6,6 @@ import { HOME_BRIEF } from "./home-brief";
 import { JobCard } from "@/components/jobs/JobCard";
 import { ArticleCard } from "@/components/content/ArticleCard";
 
-export const revalidate = 60;
-
 function HeroLetter() {
   return (
     <img

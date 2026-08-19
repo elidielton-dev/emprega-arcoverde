@@ -2,8 +2,6 @@ import React from "react";
 import { prisma } from "@/lib/db/prisma";
 import { ExternalLink, Link2, ShieldCheck } from "lucide-react";
 
-export const revalidate = 60;
-
 export default async function LinksUteisPage() {
   const links = await prisma.usefulLink.findMany({
     where: { isActive: true },

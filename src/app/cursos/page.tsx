@@ -3,8 +3,6 @@ import Link from "next/link";
 import { prisma } from "@/lib/db/prisma";
 import { GraduationCap, ExternalLink, Calendar, MapPin, Clock, Users } from "lucide-react";
 
-export const revalidate = 60;
-
 export default async function CursosPage() {
   const [courses, providers] = await Promise.all([
     prisma.course.findMany({
