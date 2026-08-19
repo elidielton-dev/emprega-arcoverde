@@ -178,7 +178,7 @@ export default async function AdminDashboardPage() {
           </div>
           <h3 className="font-bold text-base text-[#2E221F]">Empresas Parceiras</h3>
           <p className="text-xs text-[#78716c]">
-            Verificar empresas contratantes, CNPJs e vincular membros administradores.
+            Cadastrar empresas da ACA e da Prefeitura. A empresa não se cadastra sozinha.
           </p>
         </Link>
 

@@ -46,6 +46,11 @@ export function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/empresas/interesse" className="text-[#FEEDDF] hover:text-white">
+                  Sou empresa
+                </Link>
+              </li>
+              <li>
                 <Link href="/entrar" className="text-[#FEEDDF] hover:text-white">
                   Área da empresa
                 </Link>

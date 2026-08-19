@@ -1,0 +1,92 @@
+import React from "react";
+import Link from "next/link";
+import { BrandLogo } from "@/components/ui/BrandLogo";
+import { Building2, MapPin, Phone } from "lucide-react";
+import { CopyInterestLink } from "@/components/company/CopyInterestLink";
+import { companyInterestMessage, getCompanyContactChannels, whatsappLink } from "@/lib/company/contact";
+
+export default function EmpresaInteressePage() {
+  const { acaPhone, prefeituraPhone } = getCompanyContactChannels();
+  const message = companyInterestMessage();
+  const acaHref = whatsappLink(acaPhone, message);
+  const prefeituraHref = whatsappLink(prefeituraPhone, message);
+
+  return (
+    <div className="min-h-[80vh] bg-[#F4F5F7] py-12 px-4">
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div className="text-center space-y-3">
+          <BrandLogo className="justify-center mx-auto" />
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#E65100] tracking-tight">
+            Quero cadastrar minha empresa
+          </h1>
+          <p className="text-sm text-[#4B5563] leading-relaxed">
+            No Emprega Arcoverde a empresa não cria a própria conta. Quem cadastra CNPJ, razão social e nome fantasia é a{" "}
+            <strong>ACA</strong> ou a <strong>Prefeitura</strong>, depois que vocês entram em contato.
+          </p>
+        </div>
+
+        <div className="bg-white rounded-3xl border border-[#E6E8EB] p-6 sm:p-8 space-y-5">
+          <div className="flex items-start gap-3">
+            <Building2 className="w-6 h-6 text-[#E65100] shrink-0 mt-0.5" />
+            <p className="text-sm text-[#1A1A1A] leading-relaxed">
+              Mostre o interesse, fale com a ACA ou com a Sala do Empreendedor e o operador autorizado registra a empresa no painel. Este botão não cria cadastro.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <a
+              href={acaHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 text-center bg-[#25D366] hover:bg-[#1ebe5a] text-white font-bold text-sm py-3 rounded-full"
+            >
+              Falar com a ACA no WhatsApp
+            </a>
+            <a
+              href={prefeituraHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 text-center bg-[#1C1410] hover:bg-black text-white font-bold text-sm py-3 rounded-full"
+            >
+              Falar com a Prefeitura no WhatsApp
+            </a>
+          </div>
+
+          <CopyInterestLink className="w-full" />
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="bg-white rounded-2xl border border-[#E6E8EB] p-5 text-sm text-[#4B5563] space-y-2">
+            <p className="font-bold text-[#1A1A1A]">ACA</p>
+            <p className="flex gap-2">
+              <MapPin className="w-4 h-4 text-[#E65100] shrink-0 mt-0.5" />
+              Av. Cel. Antônio Japiassu, 590 - Centro
+            </p>
+            <p className="flex gap-2">
+              <Phone className="w-4 h-4 text-[#E65100] shrink-0 mt-0.5" />
+              (87) 3821-1234
+            </p>
+          </div>
+          <div className="bg-white rounded-2xl border border-[#E6E8EB] p-5 text-sm text-[#4B5563] space-y-2">
+            <p className="font-bold text-[#1A1A1A]">Sala do Empreendedor</p>
+            <p className="flex gap-2">
+              <MapPin className="w-4 h-4 text-[#E65100] shrink-0 mt-0.5" />
+              Rua Cap. Arlindo Pachêco de Albuquerque, Centro
+            </p>
+            <p className="flex gap-2">
+              <Phone className="w-4 h-4 text-[#E65100] shrink-0 mt-0.5" />
+              (87) 3821-9000
+            </p>
+          </div>
+        </div>
+
+        <p className="text-center text-sm text-[#6B7280]">
+          É candidato?{" "}
+          <Link href="/cadastro" className="font-bold text-[#E65100] hover:underline">
+            Cadastre o currículo
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
+}

@@ -35,6 +35,7 @@ export default async function VagasPage({ searchParams }: VagasPageProps) {
   // Filtros dinâmicos no banco
   const where: any = {
     status: "PUBLISHED",
+    company: { status: "ACTIVE" },
     OR: [
       { applicationDeadline: null },
       { applicationDeadline: { gte: new Date() } },

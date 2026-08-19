@@ -1,5 +1,6 @@
 import React from "react";
-import { MapPin, Phone, Mail, Clock, MessageSquare } from "lucide-react";
+import Link from "next/link";
+import { MapPin, Phone, Mail, Clock } from "lucide-react";
 
 export default function ContatoPage() {
   return (
@@ -67,6 +68,19 @@ export default function ContatoPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="bg-white rounded-3xl border border-[#FEEDDF] p-6 sm:p-8 text-center space-y-3">
+        <h2 className="text-lg font-bold text-[#2E221F]">Empresa que quer entrar no portal</h2>
+        <p className="text-sm text-[#78716c]">
+          O cadastro não é feito pela internet. Fale com a ACA ou com a Prefeitura.
+        </p>
+        <Link
+          href="/empresas/interesse"
+          className="inline-flex bg-[#E65100] hover:bg-[#D84315] text-white font-bold text-sm px-5 py-2.5 rounded-full"
+        >
+          Quero cadastrar minha empresa
+        </Link>
       </div>
     </div>
   );

@@ -155,6 +155,8 @@ async function main() {
       address: "Av. Antônio Japiassu, 450 - Centro",
       description: "Tradicional rede de comércio varejista e atacadista de alimentos e utilidades em Arcoverde.",
       isVerified: true,
+      status: "ACTIVE",
+      createdByInstitution: "ACA",
       members: {
         create: {
           userId: companyUser1.id,
@@ -176,6 +178,8 @@ async function main() {
       address: "Distrito Industrial, Galpão 03",
       description: "Empresa de armazenagem, logística refrigerada e transporte para o interior de Pernambuco.",
       isVerified: true,
+      status: "ACTIVE",
+      createdByInstitution: "ACA",
       members: {
         create: {
           userId: companyUser2.id,
@@ -196,6 +200,8 @@ async function main() {
       description: "Grande player regional do setor de distribuição em processo de expansão estratégica.",
       isVerified: true,
       isConfidentialDefault: true,
+      status: "ACTIVE",
+      createdByInstitution: "PREFEITURA",
     },
   });
 

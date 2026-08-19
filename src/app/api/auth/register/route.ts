@@ -12,9 +12,12 @@ export async function POST(req: NextRequest) {
     const name = (formData.get("name") as string)?.trim();
     const email = (formData.get("email") as string)?.toLowerCase().trim();
     const password = formData.get("password") as string;
-    const role = (formData.get("role") as string) || "CANDIDATE";
-    const companyName = (formData.get("companyName") as string)?.trim();
+    const role = "CANDIDATE";
     const acceptTerms = formData.get("acceptTerms") === "on" || formData.get("acceptTerms") === "true";
+
+    if ((formData.get("role") as string) === "COMPANY_MEMBER") {
+      return formRedirect(new URL("/empresas/interesse", req.url));
+    }
 
     if (!name || !email || !password || password.length < 6) {
       return formRedirect(new URL("/cadastro?erro=dados_invalidos", req.url));
@@ -51,49 +54,26 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    let companyId: string | undefined = undefined;
+    const profile = await prisma.candidateProfile.create({
+      data: {
+        userId: user.id,
+        fullName: name,
+        city: "Arcoverde",
+        state: "PE",
+        educationLevel: "MEDIO",
+      },
+    });
 
-    if (role === "CANDIDATE") {
-      // Criar perfil inicial de candidato e versão inicial de currículo
-      const profile = await prisma.candidateProfile.create({
-        data: {
-          userId: user.id,
-          fullName: name,
-          city: "Arcoverde",
-          state: "PE",
-          educationLevel: "MEDIO",
-        },
-      });
+    await prisma.resumeVersion.create({
+      data: {
+        candidateId: profile.id,
+        versionNumber: 1,
+        educationLevel: "MEDIO",
+        skillsSnapshot: JSON.stringify([]),
+      },
+    });
 
-      await prisma.resumeVersion.create({
-        data: {
-          candidateId: profile.id,
-          versionNumber: 1,
-          educationLevel: "MEDIO",
-          skillsSnapshot: JSON.stringify([]),
-        },
-      });
-    } else if (role === "COMPANY_MEMBER") {
-      const company = await prisma.company.create({
-        data: {
-          name: companyName || name,
-          city: "Arcoverde",
-          state: "PE",
-          members: {
-            create: {
-              userId: user.id,
-              role: "OWNER",
-            },
-          },
-        },
-      });
-      companyId = company.id;
-    }
-
-    const destination =
-      role === "COMPANY_MEMBER"
-        ? "/empresa/perfil?sucesso=bem_vindo"
-        : "/painel/curriculo?sucesso=bem_vindo";
+    const destination = "/painel/curriculo?sucesso=bem_vindo";
 
     const response = formRedirect(new URL(destination, req.url));
     await attachSessionCookie(response, {
@@ -101,7 +81,6 @@ export async function POST(req: NextRequest) {
       email: user.email,
       name: user.name,
       role: user.role as UserRole,
-      companyId,
     });
 
     await logAudit({

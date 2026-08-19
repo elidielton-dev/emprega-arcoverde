@@ -37,13 +37,14 @@ export default async function JobSlugPage({ params }: JobSlugPageProps) {
           city: true,
           state: true,
           description: true,
+          status: true,
         },
       },
       category: true,
     },
   });
 
-  if (!job || job.status !== "PUBLISHED") {
+  if (!job || job.status !== "PUBLISHED" || job.company.status !== "ACTIVE") {
     notFound();
   }
 

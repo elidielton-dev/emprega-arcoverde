@@ -43,6 +43,10 @@ export function canPerformAssistedService(role?: string): boolean {
   return role === "ASSISTED_OPERATOR" || isAdmin(role);
 }
 
+export function canRegisterCompany(role?: string): boolean {
+  return role === "ASSISTED_OPERATOR" || isAdmin(role);
+}
+
 export function canPublishJobDirectly(role?: string): boolean {
   return isAdmin(role);
 }

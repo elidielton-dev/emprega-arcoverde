@@ -4,7 +4,7 @@ export const RegisterSchema = z.object({
   name: z.string().min(3, "O nome deve ter pelo menos 3 caracteres"),
   email: z.string().email("Informe um e-mail válido").toLowerCase().trim(),
   password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres"),
-  role: z.enum(["CANDIDATE", "COMPANY_MEMBER"]).default("CANDIDATE"),
+  role: z.enum(["CANDIDATE"]).default("CANDIDATE"),
   acceptTerms: z.boolean().refine((v) => v === true, "Você deve aceitar os termos de uso e privacidade"),
 });
 

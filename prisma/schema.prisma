@@ -4,8 +4,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ==========================================
@@ -37,6 +38,7 @@ model User {
   assistedCandidates    CandidateProfile[] @relation("AssistedByOperator")
   reviewedJobs          JobPublicationReview[]
   createdJobs           Job[]             @relation("JobCreator")
+  companiesCreated      Company[]         @relation("CompanyCreator")
   statusHistories       ApplicationStatusHistory[]
 }
 
@@ -91,8 +93,17 @@ model Company {
   city           String    @default("Arcoverde")
   state          String    @default("PE")
   address        String?
+  sector         String?
+  contactName    String?
+  notes          String?
   description    String?
   logoUrl        String?
+  status         String    @default("ACTIVE") // PENDING, ACTIVE, REJECTED, BLOCKED
+  rejectionReason String?
+  createdByInstitution String? // ACA, PREFEITURA
+  createdById    String?
+  createdBy      User?     @relation("CompanyCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  reviewedAt     DateTime?
   isVerified     Boolean   @default(false)
   isConfidentialDefault Boolean @default(false)
   createdAt      DateTime  @default(now())

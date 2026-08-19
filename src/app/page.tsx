@@ -34,6 +34,7 @@ export default async function HomePage() {
         prisma.job.findMany({
           where: {
             status: "PUBLISHED",
+            company: { status: "ACTIVE" },
             OR: [{ applicationDeadline: null }, { applicationDeadline: { gte: new Date() } }],
           },
           include: {
