@@ -1,8 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { BrandLogo } from "@/components/ui/BrandLogo";
-import { Building2, MapPin, Phone } from "lucide-react";
-import { CopyInterestLink } from "@/components/company/CopyInterestLink";
+import { MapPin, Phone } from "lucide-react";
 import { companyInterestMessage, getCompanyContactChannels, whatsappLink } from "@/lib/company/contact";
 
 export default function EmpresaInteressePage() {
@@ -19,20 +18,9 @@ export default function EmpresaInteressePage() {
           <h1 className="text-2xl sm:text-3xl font-extrabold text-[#E65100] tracking-tight">
             Quero cadastrar minha empresa
           </h1>
-          <p className="text-sm text-[#4B5563] leading-relaxed">
-            No Emprega Arcoverde a empresa não cria a própria conta. Quem cadastra CNPJ, razão social e nome fantasia é a{" "}
-            <strong>ACA</strong> ou a <strong>Prefeitura</strong>, depois que vocês entram em contato.
-          </p>
         </div>
 
-        <div className="bg-white rounded-3xl border border-[#E6E8EB] p-6 sm:p-8 space-y-5">
-          <div className="flex items-start gap-3">
-            <Building2 className="w-6 h-6 text-[#E65100] shrink-0 mt-0.5" />
-            <p className="text-sm text-[#1A1A1A] leading-relaxed">
-              Mostre o interesse, fale com a ACA ou com a Sala do Empreendedor e o operador autorizado registra a empresa no painel. Este botão não cria cadastro.
-            </p>
-          </div>
-
+        <div className="bg-white rounded-3xl border border-[#E6E8EB] p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row gap-3">
             <a
               href={acaHref}
@@ -51,8 +39,6 @@ export default function EmpresaInteressePage() {
               Falar com a Prefeitura no WhatsApp
             </a>
           </div>
-
-          <CopyInterestLink className="w-full" />
         </div>
 
         <div className="grid sm:grid-cols-2 gap-4">
