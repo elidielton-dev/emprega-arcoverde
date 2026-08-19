@@ -7,6 +7,16 @@ import { HOME_BRIEF } from "./home-brief";
 import { JobCard } from "@/components/jobs/JobCard";
 import { ArticleCard } from "@/components/content/ArticleCard";
 
+function HeroLetterMobile() {
+  return (
+    <img
+      src="/illustrations/hero-letter.png"
+      alt=""
+      className="lg:hidden mx-auto w-[min(72vw,260px)] h-auto mb-5 select-none pointer-events-none"
+    />
+  );
+}
+
 function HeroLetter() {
   return (
     <img
@@ -62,8 +72,9 @@ export default async function HomePage() {
 
   return (
     <div className="pb-16">
-      <section className="bg-white min-h-[calc(100dvh-72px)] flex flex-col justify-center">
-        <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-10 sm:py-12">
+      <section className="bg-white min-h-[calc(100dvh-72px)] flex flex-col justify-start pt-6 lg:justify-center lg:pt-0">
+        <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-12">
+          <HeroLetterMobile />
           <div className="flex items-center justify-center gap-1 lg:gap-2">
             <HeroLetter />
             <div className="text-center max-w-xl">
