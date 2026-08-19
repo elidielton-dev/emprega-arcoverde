@@ -20,15 +20,15 @@ export function DemoAccounts() {
   };
 
   return (
-    <div className="pt-4 border-t border-[#3D271D] space-y-2">
-      <p className="text-[11px] font-semibold text-[#C4A574]">Contas de demonstração</p>
+    <div className="pt-4 border-t border-[#FEEDDF] space-y-2">
+      <p className="text-[11px] font-semibold text-[#78716c]">Contas de demonstração</p>
       <div className="grid grid-cols-2 gap-1.5">
         {DEMOS.map((demo) => (
           <button
             key={demo.email}
             type="button"
             onClick={() => fill(demo.email, demo.password)}
-            className="p-2 bg-[#1A1412] hover:bg-[#2A1F1C] text-left text-[11px] font-medium text-[#FDCFA9] border border-[#3D271D]"
+            className="p-2 rounded-xl bg-[#FFF8F2] hover:bg-[#FEEDDF] text-left text-[11px] font-medium text-[#57433C] border border-[#FEEDDF] transition"
           >
             {demo.label}
           </button>
