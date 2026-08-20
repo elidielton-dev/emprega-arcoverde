@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { getSession } from "@/lib/auth/session";
-import { calculateJobMatch } from "@/lib/matching/calculator";
+import { scoreApplicationAgainstJob, serializeAtsResult } from "@/lib/matching/ats";
 import { logAudit } from "@/lib/audit/audit";
 import { sendEmail, generateApplicationConfirmationEmail } from "@/lib/mail/mailer";
 import { formRedirect } from "@/lib/http/form-redirect";
@@ -29,9 +29,14 @@ export async function POST(req: NextRequest) {
       prisma.candidateProfile.findUnique({
         where: { userId: session.userId },
         include: {
+          documents: true,
           resumeVersions: {
             where: { isCurrent: true },
-            include: { experiences: { select: { id: true }, take: 1 } },
+            include: {
+              experiences: true,
+              educations: true,
+              courses: true,
+            },
             take: 1,
           },
         },
@@ -56,16 +61,15 @@ export async function POST(req: NextRequest) {
     }
     const hasCurrentResume = Boolean(
       latestResume &&
-      (latestResume.summary?.trim() ||
-        latestResume.headline?.trim() ||
-        storedSkills.length > 0 ||
-        latestResume.experiences.length > 0),
+        (latestResume.summary?.trim() ||
+          latestResume.headline?.trim() ||
+          storedSkills.length > 0 ||
+          (latestResume.experiences?.length || 0) > 0),
     );
     if (!hasCurrentResume) {
       return formRedirect(new URL("/painel/curriculo?aviso=curriculo_incompleto", req.url));
     }
 
-    // Verificar se já se candidatou
     const existing = await prisma.application.findUnique({
       where: {
         jobId_candidateId: {
@@ -79,28 +83,9 @@ export async function POST(req: NextRequest) {
       return formRedirect(new URL(`/painel/candidaturas/${existing.id}?aviso=ja_candidatado`, req.url));
     }
 
-    // Calcular match determinístico
-    const candidateSkills = storedSkills;
-    const requiredSkills = job.skillsText ? job.skillsText.split(",").map((s) => s.trim()) : [];
+    const matchResult = await scoreApplicationAgainstJob(candidateProfile, job, { coverNote });
+    const atsFields = serializeAtsResult(matchResult);
 
-    const matchResult = calculateJobMatch(
-      {
-        city: candidateProfile.city,
-        educationLevel: candidateProfile.educationLevel,
-        driverLicense: candidateProfile.driverLicense,
-        skills: candidateSkills,
-        categorySlug: job.category.slug,
-      },
-      {
-        city: job.city,
-        educationLevel: job.educationLevel,
-        driverLicense: job.driverLicense,
-        requiredSkills: requiredSkills,
-        categorySlug: job.category.slug,
-      }
-    );
-
-    // Criar candidatura
     const application = await prisma.application.create({
       data: {
         jobId: job.id,
@@ -109,8 +94,7 @@ export async function POST(req: NextRequest) {
         origin: "SELF",
         status: "SUBMITTED",
         coverNote,
-        matchScore: matchResult.score,
-        matchExplanation: JSON.stringify(matchResult.explanations),
+        ...atsFields,
         statusHistory: {
           create: {
             status: "SUBMITTED",
@@ -121,22 +105,20 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Auditoria
     await logAudit({
       userId: session.userId,
       action: "APPLICATION_SUBMITTED",
       resourceType: "Application",
       resourceId: application.id,
-      details: { jobId: job.id, matchScore: matchResult.score },
+      details: { jobId: job.id, matchScore: matchResult.score, band: matchResult.band },
     });
 
-    // E-mail transacional de confirmação
     if (candidateProfile.emailConsent) {
       const emailHtml = generateApplicationConfirmationEmail(
         job.title,
         candidateProfile.fullName,
         job.isConfidential,
-        job.company.tradeName || job.company.name
+        job.company.tradeName || job.company.name,
       );
 
       await sendEmail({

@@ -330,6 +330,9 @@ model CandidateDocument {
   mimeType       String
   documentType   String           @default("RESUME") // RESUME, CERTIFICATE, DIPLOMA, OTHER
   scanStatus     String           @default("CLEAN")  // PENDING, CLEAN, REJECTED
+  parsedText     String?          // Texto extraído para ATS
+  parsedAt       DateTime?
+  parseStatus    String           @default("PENDING") // PENDING, OK, FAILED, UNSUPPORTED
   uploadedById   String?
   createdAt      DateTime         @default(now())
 }
@@ -353,7 +356,8 @@ model Application {
   coverNote         String?
   
   matchScore        Int               @default(0) // 0 - 100
-  matchExplanation  String?           // JSON array of strings
+  matchExplanation  String?           // JSON array of strings (resumo legível)
+  matchBreakdown    String?           // JSON detalhado do ATS profissional
   
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt

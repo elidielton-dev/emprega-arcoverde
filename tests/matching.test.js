@@ -1,118 +1,119 @@
 const test = require("node:test");
 const assert = require("node:assert");
+const { spawnSync } = require("node:child_process");
+const path = require("node:path");
 
-// Simulação da função determinística de compatibilidade
-function calculateJobMatch(candidate, job) {
-  let score = 0;
-  const explanations = [];
-
-  const EDUCATION_HIERARCHY = {
-    FUNDAMENTAL: 1,
-    MEDIO: 2,
-    TECNICO: 3,
-    SUPERIOR: 4,
-    POS: 5,
-  };
-
-  // 1. Categoria (30 pts)
-  if (job.categorySlug && candidate.categorySlug === job.categorySlug) {
-    score += 30;
-    explanations.push("Sua área principal corresponde à vaga (+30 pts)");
-  } else {
-    score += 10;
+function runAts(candidate, job) {
+  const runner = path.join(__dirname, "ats-runner.mjs");
+  const result = spawnSync(
+    process.execPath,
+    ["--experimental-strip-types", runner, JSON.stringify(candidate), JSON.stringify(job)],
+    { encoding: "utf8", cwd: path.join(__dirname, "..") },
+  );
+  if (result.status !== 0) {
+    throw new Error(result.stderr || result.stdout || "Falha ao executar ATS");
   }
-
-  // 2. Habilidades (25 pts)
-  const jobSkills = (job.requiredSkills || []).map((s) => s.toLowerCase().trim()).filter(Boolean);
-  const candSkills = (candidate.skills || []).map((s) => s.toLowerCase().trim()).filter(Boolean);
-
-  if (jobSkills.length === 0) {
-    score += 25;
-    explanations.push("Sem requisitos excludentes (+25 pts)");
-  } else {
-    const matched = jobSkills.filter((js) => candSkills.some((cs) => cs.includes(js) || js.includes(cs)));
-    const skillRatio = matched.length / jobSkills.length;
-    const skillPoints = Math.round(skillRatio * 25);
-    score += skillPoints;
-    if (matched.length > 0) {
-      explanations.push(`Você possui ${matched.length} de ${jobSkills.length} habilidades (+${skillPoints} pts)`);
-    }
-  }
-
-  // 3. Escolaridade (20 pts)
-  const jobEduRank = EDUCATION_HIERARCHY[job.educationLevel || "MEDIO"] || 2;
-  const candEduRank = EDUCATION_HIERARCHY[candidate.educationLevel || "MEDIO"] || 2;
-
-  if (candEduRank >= jobEduRank) {
-    score += 20;
-    explanations.push("Sua escolaridade atende ao requisito (+20 pts)");
-  }
-
-  // 4. Localidade (10 pts)
-  if ((candidate.city || "").toLowerCase() === (job.city || "").toLowerCase()) {
-    score += 10;
-    explanations.push("Localidade compatível (+10 pts)");
-  } else {
-    score += 5;
-  }
-
-  // 5. CNH (10 pts)
-  if (job.driverLicense === "NENHUMA" || !job.driverLicense) {
-    score += 10;
-    explanations.push("Não exige CNH (+10 pts)");
-  } else if (candidate.driverLicense === job.driverLicense) {
-    score += 10;
-    explanations.push("CNH atende ao requisito (+10 pts)");
-  }
-
-  // 6. Base geral
-  score += 5;
-
-  return {
-    score: Math.min(100, Math.max(0, score)),
-    explanations,
-  };
+  return JSON.parse(result.stdout.trim());
 }
 
-test("Cálculo de compatibilidade com candidato 100% aderente", () => {
-  const candidate = {
-    categorySlug: "administracao",
-    skills: ["Excel", "Atendimento", "Notas Fiscais"],
-    educationLevel: "SUPERIOR",
-    city: "Arcoverde",
-    driverLicense: "B",
-  };
-
-  const job = {
-    categorySlug: "administracao",
-    requiredSkills: ["Excel", "Atendimento"],
-    educationLevel: "MEDIO",
-    city: "Arcoverde",
-    driverLicense: "NENHUMA",
-  };
-
-  const result = calculateJobMatch(candidate, job);
-  assert.strictEqual(result.score, 100);
-  assert.ok(result.explanations.length >= 4);
+test("ATS profissional: candidato aderente fica em faixa forte", () => {
+  const result = runAts(
+    {
+      city: "Arcoverde",
+      educationLevel: "MEDIO",
+      driverLicense: "B",
+      skills: ["atendimento", "caixa", "excel"],
+      experienceYears: 2,
+      headline: "Operador de caixa",
+      summary: "Experiência em atendimento ao cliente e operação de caixa",
+      recentTitles: ["Operador de caixa supermercado"],
+      parsedResumeText:
+        "Operador de caixa com excel atendimento ao cliente PDV cupom fiscal organização",
+      parseStatus: "OK",
+      hasStructuredResume: true,
+      applied: true,
+      coverNote: "Tenho interesse nesta vaga de atendimento e caixa.",
+    },
+    {
+      city: "Arcoverde",
+      educationLevel: "MEDIO",
+      driverLicense: "B",
+      skillsText: "atendimento, caixa, excel",
+      experienceRequired: "1_ANO",
+      title: "Operador de Caixa",
+      requirements: "Experiência em atendimento e operação de caixa",
+      description: "Atender clientes no PDV com excel e organização",
+      summary: "Vaga para operador de caixa",
+    },
+  );
+  assert.ok(result.score >= 75, `score esperado >= 75, veio ${result.score}`);
+  assert.strictEqual(result.band, "STRONG");
+  assert.ok(result.breakdown.requiredMatched.length >= 2);
 });
 
-test("Cálculo de compatibilidade com candidato sem habilidades específicas", () => {
-  const candidate = {
-    categorySlug: "comercio",
-    skills: [],
-    educationLevel: "FUNDAMENTAL",
-    city: "Pesqueira",
-    driverLicense: "NENHUMA",
+test("ATS profissional: cidade diferente NÃO zera score (sinal suave)", () => {
+  const baseCandidate = {
+    educationLevel: "MEDIO",
+    skills: ["excel", "administracao"],
+    experienceYears: 1,
+    recentTitles: ["Assistente administrativo"],
+    parsedResumeText: "Assistente administrativo excel planilhas organizacao",
+    parseStatus: "OK",
+    hasStructuredResume: true,
+    applied: true,
   };
-
   const job = {
-    categorySlug: "administracao",
-    requiredSkills: ["Excel Avançado", "ERP SAP"],
-    educationLevel: "SUPERIOR",
     city: "Arcoverde",
-    driverLicense: "B",
+    educationLevel: "MEDIO",
+    skillsText: "excel, administracao",
+    title: "Assistente Administrativo",
+    requirements: "Domínio de excel e rotinas administrativas",
+    experienceRequired: "1_ANO",
   };
+  const sameCity = runAts({ ...baseCandidate, city: "Arcoverde" }, job);
+  const otherCity = runAts({ ...baseCandidate, city: "Recife" }, job);
+  assert.ok(otherCity.score > 40, "candidato de outra cidade não deve ser descartado");
+  assert.ok(sameCity.score - otherCity.score <= 3);
+  assert.strictEqual(otherCity.breakdown.locationHint, 2);
+});
 
-  const result = calculateJobMatch(candidate, job);
+test("ATS profissional: candidato fraco cai em REVIEW sem ser zerado", () => {
+  const result = runAts(
+    {
+      city: "Petrolina",
+      educationLevel: "FUNDAMENTAL",
+      skills: [],
+      experienceYears: 0,
+      parsedResumeText: "sem experiencia",
+      parseStatus: "FAILED",
+      hasStructuredResume: false,
+      applied: true,
+    },
+    {
+      city: "Arcoverde",
+      educationLevel: "SUPERIOR",
+      skillsText: "python, sql, power bi, ingles avancado",
+      title: "Analista de Dados",
+      requirements: "Python SQL Power BI inglês avançado",
+      description: "Modelagem de dados e dashboards",
+      experienceRequired: "3_ANOS_MAIS",
+    },
+  );
   assert.ok(result.score < 50);
+  assert.strictEqual(result.band, "REVIEW");
+  assert.ok(result.score > 0);
+  assert.ok(result.breakdown.alerts.length > 0);
+});
+
+test("ATS profissional: ranking ordena do maior para o menor", () => {
+  const applicants = [
+    { name: "A", score: 40 },
+    { name: "B", score: 92 },
+    { name: "C", score: 71 },
+  ];
+  const ranked = [...applicants].sort((a, b) => b.score - a.score);
+  assert.deepStrictEqual(
+    ranked.map((a) => a.name),
+    ["B", "C", "A"],
+  );
 });

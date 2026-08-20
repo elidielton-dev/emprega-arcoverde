@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 import { getSession } from "@/lib/auth/session";
 import { saveFileLocally } from "@/lib/storage/storage";
 import { logAudit } from "@/lib/audit/audit";
+import { parseResumeFile } from "@/lib/matching/resume-parser";
 
 export async function POST(req: NextRequest) {
   try {
@@ -46,8 +47,28 @@ export async function POST(req: NextRequest) {
         mimeType: stored.mimeType,
         documentType,
         uploadedById: session.userId,
+        parseStatus: "PENDING",
       },
     });
+
+    // Extrai texto do anexo para o ATS (não bloqueia o fluxo se falhar)
+    try {
+      const parsed = await parseResumeFile(stored.fileKey, stored.mimeType, stored.fileName);
+      await prisma.candidateDocument.update({
+        where: { id: doc.id },
+        data: {
+          parsedText: parsed.text || null,
+          parsedAt: new Date(),
+          parseStatus: parsed.status,
+        },
+      });
+    } catch (parseError) {
+      console.warn("Parse do documento falhou no upload:", doc.id, parseError);
+      await prisma.candidateDocument.update({
+        where: { id: doc.id },
+        data: { parseStatus: "FAILED", parsedAt: new Date() },
+      });
+    }
 
     await logAudit({
       userId: session.userId,
