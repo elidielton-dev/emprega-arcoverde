@@ -138,7 +138,7 @@ export default async function VagasPage({ searchParams }: VagasPageProps) {
       </div>
 
       {/* Formulário de Busca e Filtros */}
-      <form method="GET" action="/vagas" className="bg-white p-6 rounded-2xl border border-[#E6E8EB] space-y-4">
+      <form method="GET" action="/vagas" className="space-y-4 rounded-lg border border-[#E6E8EB] bg-white p-5 shadow-[0_1px_2px_rgba(28,20,16,0.04)] sm:p-6">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1 relative">
             <Search className="w-5 h-5 text-[#E65100] absolute left-3.5 top-3.5 pointer-events-none" />
@@ -162,7 +162,7 @@ export default async function VagasPage({ searchParams }: VagasPageProps) {
           </div>
           <button
             type="submit"
-            className="bg-[#1C1410] hover:bg-black text-white font-semibold text-sm px-6 py-3 rounded-full flex items-center justify-center gap-2"
+            className="flex items-center justify-center gap-2 rounded-md bg-[#1C1410] px-6 py-3 text-sm font-semibold text-white hover:bg-black"
           >
             <Filter className="w-4 h-4" />
             <span>Filtrar Vagas</span>
@@ -251,22 +251,22 @@ export default async function VagasPage({ searchParams }: VagasPageProps) {
         </div>
 
         {total === 0 ? (
-          <div className="bg-white p-12 rounded-2xl border border-[#E6E8EB] text-center max-w-md mx-auto space-y-3">
-            <Briefcase className="w-12 h-12 text-[#E65100] mx-auto" />
-            <h3 className="text-base font-bold text-[#1A1A1A]">Nenhuma vaga encontrada para estes filtros</h3>
-            <p className="text-xs text-[#4B5563]">
+          <div className="mx-auto max-w-md space-y-3 rounded-lg border border-[#E6E8EB] bg-white p-10 text-center shadow-[0_1px_2px_rgba(28,20,16,0.04)]">
+            <Briefcase className="mx-auto h-12 w-12 text-[#E65100]" />
+            <h3 className="text-base font-bold text-[#1C1410]">Nenhuma vaga encontrada para estes filtros</h3>
+            <p className="text-xs text-[#78716c]">
               Tente remover alguns filtros ou buscar por termos mais amplos. Você também pode cadastrar seu currículo para receber novas oportunidades.
             </p>
             <Link
               href="/cadastro"
-              className="inline-block bg-[#1C1410] text-white text-xs font-bold px-4 py-2 rounded-full"
+              className="inline-block rounded-md bg-[#1C1410] px-4 py-2 text-xs font-bold text-white"
             >
               Cadastrar Currículo
             </Link>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               {jobs.map((job) => (
                 <JobCard key={job.id} job={job} />
               ))}
@@ -276,19 +276,19 @@ export default async function VagasPage({ searchParams }: VagasPageProps) {
         )}
       </div>
 
-      <section className="bg-white rounded-2xl border border-[#E6E8EB] p-6 sm:p-8 flex flex-col sm:flex-row gap-5 sm:items-center">
-        <div className="w-12 h-12 rounded-full bg-[#F4F5F7] flex items-center justify-center shrink-0">
-          <MapPin className="w-6 h-6 text-[#1A1A1A]" aria-hidden="true" />
+      <section className="flex flex-col gap-5 rounded-lg border border-[#E6E8EB] bg-white p-5 shadow-[0_1px_2px_rgba(28,20,16,0.04)] sm:flex-row sm:items-center sm:p-6">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-[#F4F5F7]">
+          <MapPin className="h-5 w-5 text-[#1C1410]" aria-hidden="true" />
         </div>
         <div className="flex-1">
           <h2 className="text-lg font-bold text-[#E65100]">Não consegue fazer o cadastro pela internet?</h2>
-          <p className="text-sm text-[#4B5563] mt-1 leading-relaxed">
+          <p className="mt-1 text-sm leading-relaxed text-[#78716c]">
             Vá à Sala do Empreendedor ou à ACA. O cadastro assistido é gratuito: montamos o currículo com você.
           </p>
         </div>
         <Link
           href="/contato"
-          className="shrink-0 inline-flex justify-center bg-[#1C1410] hover:bg-black text-white text-sm font-bold px-5 py-2.5 rounded-full"
+          className="inline-flex shrink-0 justify-center rounded-md bg-[#1C1410] px-5 py-2.5 text-sm font-bold text-white hover:bg-black"
         >
           Ver endereço
         </Link>

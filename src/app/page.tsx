@@ -140,15 +140,17 @@ export default async function HomePage() {
         </div>
 
         {featuredJobs.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-[#E6E8EB] p-8 text-center">
-            <h3 className="font-bold text-[#1A1A1A]">Nenhuma vaga publicada no momento</h3>
-            <p className="text-sm text-[#4B5563] mt-2">Cadastre seu currículo para ser avisado quando saírem novas vagas.</p>
-            <Link href="/cadastro" className="inline-block mt-4 font-bold text-[#E65100] hover:underline">
+          <div className="rounded-lg border border-[#E6E8EB] bg-white p-8 text-center shadow-[0_1px_2px_rgba(28,20,16,0.04)]">
+            <h3 className="font-bold text-[#1C1410]">Nenhuma vaga publicada no momento</h3>
+            <p className="mt-2 text-sm text-[#78716c]">
+              Cadastre seu currículo para ser avisado quando saírem novas vagas.
+            </p>
+            <Link href="/cadastro" className="mt-4 inline-block font-bold text-[#E65100] hover:underline">
               Cadastrar currículo
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {featuredJobs.map((job) => (
               <JobCard key={job.id} job={job} />
             ))}
@@ -156,20 +158,20 @@ export default async function HomePage() {
         )}
       </section>
 
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-12">
-        <div className="bg-white rounded-2xl border border-[#E6E8EB] p-6 sm:p-8 flex flex-col sm:flex-row gap-5 sm:items-center">
-          <div className="w-12 h-12 rounded-full bg-[#F4F5F7] flex items-center justify-center shrink-0">
-            <MapPin className="w-6 h-6 text-[#1A1A1A]" aria-hidden="true" />
+      <section className="mx-auto max-w-6xl px-4 pt-12 sm:px-6">
+        <div className="flex flex-col gap-5 rounded-lg border border-[#E6E8EB] bg-white p-5 shadow-[0_1px_2px_rgba(28,20,16,0.04)] sm:flex-row sm:items-center sm:p-6">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-[#F4F5F7]">
+            <MapPin className="h-5 w-5 text-[#1C1410]" aria-hidden="true" />
           </div>
           <div className="flex-1">
             <h2 className="text-lg font-bold text-[#E65100]">Não consegue fazer o cadastro pela internet?</h2>
-            <p className="text-sm text-[#4B5563] mt-1 leading-relaxed">
+            <p className="mt-1 text-sm leading-relaxed text-[#78716c]">
               Vá à Sala do Empreendedor ou à ACA. O cadastro assistido é gratuito: montamos o currículo com você.
             </p>
           </div>
           <Link
             href="/contato"
-            className="shrink-0 inline-flex justify-center bg-[#1C1410] hover:bg-black text-white text-sm font-bold px-5 py-2.5 rounded-full"
+            className="inline-flex shrink-0 justify-center rounded-md bg-[#1C1410] px-5 py-2.5 text-sm font-bold text-white hover:bg-black"
           >
             Ver endereço
           </Link>
@@ -177,29 +179,34 @@ export default async function HomePage() {
       </section>
 
       {activeCourses.length > 0 && (
-        <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-12">
-          <div className="flex items-end justify-between gap-4 mb-6">
-            <h2 className="text-xl sm:text-2xl font-extrabold text-[#E65100]">Cursos gratuitos</h2>
+        <section className="mx-auto max-w-6xl px-4 pt-12 sm:px-6">
+          <div className="mb-6 flex items-end justify-between gap-4">
+            <h2 className="text-xl font-extrabold text-[#E65100] sm:text-2xl">Cursos gratuitos</h2>
             <Link href="/cursos" className="text-sm font-semibold text-[#E65100] hover:underline">
               Ver todos
             </Link>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {activeCourses.map((course) => (
-              <article key={course.id} className="bg-white rounded-2xl border border-[#E6E8EB] p-6 flex flex-col justify-between">
+              <article
+                key={course.id}
+                className="flex flex-col justify-between rounded-lg border border-[#E6E8EB] bg-white p-5 shadow-[0_1px_2px_rgba(28,20,16,0.04)]"
+              >
                 <div>
-                  <div className="flex items-center gap-2 text-xs text-[#6B7280]">
-                    <GraduationCap className="w-4 h-4" aria-hidden="true" />
+                  <div className="flex items-center gap-2 text-xs text-[#78716c]">
+                    <GraduationCap className="h-4 w-4" aria-hidden="true" />
                     <span>{course.provider.name}</span>
                     <span>·</span>
                     <span>{course.modality}</span>
                   </div>
-                  <h3 className="font-bold text-[#1A1A1A] mt-3 leading-snug">{course.title}</h3>
-                  <p className="text-sm text-[#6B7280] mt-2 line-clamp-3 leading-relaxed">{course.description}</p>
+                  <h3 className="mt-3 font-bold leading-snug text-[#1C1410]">{course.title}</h3>
+                  <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-[#78716c]">
+                    {course.description}
+                  </p>
                 </div>
                 <Link
                   href={`/cursos/${course.slug}`}
-                  className="mt-5 inline-flex justify-center text-sm font-bold text-[#1A1A1A] border border-[#E6E8EB] rounded-full py-2.5 hover:bg-[#F4F5F7]"
+                  className="mt-5 inline-flex justify-center rounded-md border border-[#E6E8EB] bg-white py-2.5 text-sm font-bold text-[#1C1410] hover:bg-[#F4F5F7]"
                 >
                   Ver curso
                 </Link>
@@ -210,14 +217,14 @@ export default async function HomePage() {
       )}
 
       {recentArticles.length > 0 && (
-        <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-12">
-          <div className="flex items-end justify-between gap-4 mb-6">
-            <h2 className="text-xl sm:text-2xl font-extrabold text-[#E65100]">Notícias e dicas</h2>
+        <section className="mx-auto max-w-6xl px-4 pt-12 sm:px-6">
+          <div className="mb-6 flex items-end justify-between gap-4">
+            <h2 className="text-xl font-extrabold text-[#E65100] sm:text-2xl">Notícias e dicas</h2>
             <Link href="/conteudos" className="text-sm font-semibold text-[#E65100] hover:underline">
               Ver todas
             </Link>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {recentArticles.map((article) => (
               <ArticleCard
                 key={article.id}

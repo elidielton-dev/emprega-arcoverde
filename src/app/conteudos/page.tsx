@@ -23,13 +23,13 @@ export default async function ConteudosPage() {
       </p>
 
       {articles.length === 0 ? (
-        <div className="bg-white p-10 rounded-2xl border border-[#E6E8EB] text-center max-w-md mx-auto mt-10">
-          <BookOpen className="w-10 h-10 text-[#1A1A1A] mx-auto" aria-hidden="true" />
-          <h2 className="text-base font-bold text-[#1A1A1A] mt-3">Nenhum artigo publicado no momento</h2>
-          <p className="text-sm text-[#4B5563] mt-2">Novas dicas serão adicionadas em breve.</p>
+        <div className="mx-auto mt-10 max-w-md rounded-lg border border-[#E6E8EB] bg-white p-10 text-center shadow-[0_1px_2px_rgba(28,20,16,0.04)]">
+          <BookOpen className="mx-auto h-10 w-10 text-[#1C1410]" aria-hidden="true" />
+          <h2 className="mt-3 text-base font-bold text-[#1C1410]">Nenhum artigo publicado no momento</h2>
+          <p className="mt-2 text-sm text-[#78716c]">Novas dicas serão adicionadas em breve.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+        <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
           {articles.map((article) => (
             <ArticleCard
               key={article.id}
