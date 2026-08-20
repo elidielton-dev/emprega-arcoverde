@@ -9,7 +9,6 @@ import {
   Users,
   Phone,
   Mail,
-  Sparkles,
   FileText,
   Download,
 } from "lucide-react";
@@ -44,7 +43,7 @@ export default async function EmpresaVagaCandidaturasPage({ params }: { params: 
             },
           },
         },
-        orderBy: { matchScore: "desc" },
+        orderBy: { createdAt: "desc" },
       },
     },
   });
@@ -84,7 +83,7 @@ export default async function EmpresaVagaCandidaturasPage({ params }: { params: 
               Candidaturas: {job.title}
             </h1>
             <p className="text-xs text-[#78716c]">
-              {job.applications.length} {job.applications.length === 1 ? "candidato inscrito" : "candidatos inscritos"} • Ordenados por índice de aderência explicável
+              {job.applications.length} {job.applications.length === 1 ? "candidato inscrito" : "candidatos inscritos"} • Mais recentes primeiro
             </p>
           </div>
         </div>
@@ -148,14 +147,7 @@ export default async function EmpresaVagaCandidaturasPage({ params }: { params: 
                     </p>
                   </div>
 
-                  {/* Match Score */}
-                  <div className="bg-[#FFF8F2] p-3.5 rounded-2xl border border-[#FDCFA9] text-right flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2">
-                    <div className="flex items-center gap-1 text-[11px] font-bold text-[#BF360C]">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>Aderência</span>
-                    </div>
-                    <span className="text-xl font-black text-[#E65100]">{app.matchScore}%</span>
-                  </div>
+                  {/* V2 matching hidden */}
                 </div>
 
                 {/* Contatos com Consentimento LGPD */}
@@ -235,9 +227,9 @@ export default async function EmpresaVagaCandidaturasPage({ params }: { params: 
                 <form
                   action={`/api/company/applications/${app.id}/status`}
                   method="POST"
-                  className="pt-4 border-t border-[#FEEDDF] flex flex-col sm:flex-row sm:items-center gap-3"
+                  className="pt-4 border-t border-[#FEEDDF] space-y-3"
                 >
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                     <label className="text-xs font-bold text-[#57433C] shrink-0">
                       Alterar status
                     </label>
@@ -253,6 +245,12 @@ export default async function EmpresaVagaCandidaturasPage({ params }: { params: 
                       <option value="APPROVED">Aprovado</option>
                       <option value="NOT_SELECTED">Não Selecionado</option>
                     </select>
+                  </div>
+
+                  <div className="grid sm:grid-cols-3 gap-2">
+                    <label className="text-xs font-bold text-[#57433C]">Data da entrevista<input type="datetime-local" name="scheduledAt" className="mt-1 w-full p-2 rounded-xl border border-[#FEEDDF] text-base" /></label>
+                    <label className="text-xs font-bold text-[#57433C]">Local ou link<input name="location" className="mt-1 w-full p-2 rounded-xl border border-[#FEEDDF] text-base" /></label>
+                    <label className="text-xs font-bold text-[#57433C]">Orientações<input name="instructions" className="mt-1 w-full p-2 rounded-xl border border-[#FEEDDF] text-base" /></label>
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-2 sm:ml-auto">

@@ -3,12 +3,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { getSession } from "@/lib/auth/session";
-import { isMunicipalOrSuperAdmin } from "@/lib/auth/rbac";
-import { Users, ArrowLeft, Shield, CheckCircle2 } from "lucide-react";
+import { canManageUsers } from "@/lib/auth/rbac";
+import { ArrowLeft } from "lucide-react";
 
-export default async function AdminUsuariosPage() {
+export default async function AdminUsuariosPage({ searchParams }: { searchParams: { erro?: string; sucesso?: string } }) {
   const session = await getSession();
-  if (!session || !isMunicipalOrSuperAdmin(session.role)) {
+  if (!session || !canManageUsers(session.role)) {
     redirect("/admin");
   }
 
@@ -44,6 +44,30 @@ export default async function AdminUsuariosPage() {
         </p>
       </div>
 
+      <form action="/api/admin/users" method="POST" className="bg-white rounded-3xl p-6 border border-[#FEEDDF] space-y-4">
+        <h2 className="text-base font-bold text-[#2E221F]">Criar acesso administrativo</h2>
+        {searchParams.erro && (
+          <p className="text-sm text-red-800 bg-red-50 border border-red-200 rounded-xl p-3">
+            {searchParams.erro === "email_existente" ? "Este e-mail já está cadastrado." : "Revise os dados. A senha deve ter pelo menos 8 caracteres."}
+          </p>
+        )}
+        {searchParams.sucesso && <p className="text-sm text-emerald-800">Operação concluída com sucesso.</p>}
+        <div className="grid sm:grid-cols-2 gap-4">
+          <label className="text-xs font-bold text-[#57433C]">Nome<input name="name" required className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[#FEEDDF] text-base" /></label>
+          <label className="text-xs font-bold text-[#57433C]">E-mail<input name="email" type="email" required className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[#FEEDDF] text-base" /></label>
+          <label className="text-xs font-bold text-[#57433C]">Senha inicial<input name="password" type="password" minLength={8} required className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[#FEEDDF] text-base" /></label>
+          <label className="text-xs font-bold text-[#57433C]">
+            Papel
+            <select name="role" className="mt-1 w-full px-3 py-2.5 rounded-xl border border-[#FEEDDF] bg-white text-base">
+              <option value="ASSISTED_OPERATOR">Operador de Atendimento</option>
+              <option value="ACA_ADMIN">Administrador ACA</option>
+              <option value="MUNICIPAL_ADMIN">Administrador Municipal</option>
+            </select>
+          </label>
+        </div>
+        <button className="bg-[#E65100] hover:bg-[#D84315] text-white font-bold text-sm px-5 py-3 rounded-xl">Criar usuário</button>
+      </form>
+
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#FEEDDF] shadow-xs space-y-4">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
@@ -53,6 +77,7 @@ export default async function AdminUsuariosPage() {
                 <th className="pb-3">E-mail</th>
                 <th className="pb-3">Papel / Nível</th>
                 <th className="pb-3">Criado em</th>
+                <th className="pb-3 text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#FEEDDF]">
@@ -67,6 +92,14 @@ export default async function AdminUsuariosPage() {
                   </td>
                   <td className="py-3 text-[#78716c]">
                     {new Date(u.createdAt).toLocaleDateString("pt-BR")}
+                  </td>
+                  <td className="py-3 text-right">
+                    {u.id !== session.userId && ["ASSISTED_OPERATOR", "ACA_ADMIN", "MUNICIPAL_ADMIN"].includes(u.role) && (
+                      <form action={`/api/admin/users/${u.id}`} method="POST">
+                        <input type="hidden" name="_method" value="DELETE" />
+                        <button className="font-bold text-red-700 hover:underline">Excluir</button>
+                      </form>
+                    )}
                   </td>
                 </tr>
               ))}

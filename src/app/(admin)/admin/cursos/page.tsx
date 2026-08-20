@@ -3,13 +3,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { getSession } from "@/lib/auth/session";
-import { isAdmin } from "@/lib/auth/rbac";
-import { GraduationCap, ArrowLeft, ExternalLink, Users, Eye } from "lucide-react";
+import { canManageCourses } from "@/lib/auth/rbac";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 
 export default async function AdminCursosPage() {
   const session = await getSession();
-  if (!session || !isAdmin(session.role)) {
-    redirect("/entrar");
+  if (!session || !canManageCourses(session.role)) {
+    redirect("/admin");
   }
 
   const courses = await prisma.course.findMany({
@@ -19,7 +19,8 @@ export default async function AdminCursosPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-      <div>
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div>
         <Link
           href="/admin"
           className="inline-flex items-center gap-2 text-xs text-[#78716c] hover:text-[#E65100] mb-2"
@@ -33,6 +34,10 @@ export default async function AdminCursosPage() {
         <p className="text-xs text-[#78716c]">
           Cadastre e monitore os cursos oferecidos por parceiros oficiais (Prefeitura, Sebrae, Senai, Senac).
         </p>
+        </div>
+        <Link href="/admin/cursos/nova" className="bg-[#E65100] hover:bg-[#D84315] text-white font-bold text-xs px-4 py-2.5 rounded-xl">
+          Cadastrar curso
+        </Link>
       </div>
 
       <div className="space-y-4">
@@ -47,9 +52,11 @@ export default async function AdminCursosPage() {
                   {c.provider.name}
                 </span>
                 <span className="text-xs text-[#78716c] font-semibold">{c.modality}</span>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${c.status === "ACTIVE" ? "bg-emerald-100 text-emerald-800" : "bg-stone-100 text-stone-700"}`}>
-                  {c.status === "ACTIVE" ? "Inscrições Abertas" : "Encerrado"}
-                </span>
+                {c.status === "ACTIVE" ? (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">Inscrições abertas</span>
+                ) : (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-stone-100 text-[#2E221F]">Encerrado</span>
+                )}
               </div>
 
               <h3 className="text-lg font-bold text-[#2E221F]">{c.title}</h3>
@@ -70,6 +77,10 @@ export default async function AdminCursosPage() {
               >
                 <ExternalLink className="w-4 h-4" />
               </a>
+              <form action={`/api/admin/courses/${c.id}`} method="POST">
+                <input type="hidden" name="_method" value="DELETE" />
+                <button className="text-xs font-bold text-red-700 hover:underline">Excluir</button>
+              </form>
             </div>
           </div>
         ))}

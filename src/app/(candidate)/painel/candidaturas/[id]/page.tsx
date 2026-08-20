@@ -9,10 +9,8 @@ import {
   Building,
   MapPin,
   Calendar,
-  CheckCircle2,
   Clock,
   ShieldAlert,
-  Sparkles,
 } from "lucide-react";
 
 export default async function CandidaturaDetalhePage({ params }: { params: { id: string } }) {
@@ -34,6 +32,7 @@ export default async function CandidaturaDetalhePage({ params }: { params: { id:
       statusHistory: {
         orderBy: { createdAt: "desc" },
       },
+      interview: true,
     },
   });
 
@@ -82,10 +81,6 @@ export default async function CandidaturaDetalhePage({ params }: { params: { id:
     desc: "Acompanhamento do status",
   };
 
-  const matchExplanations: string[] = application.matchExplanation
-    ? JSON.parse(application.matchExplanation)
-    : [];
-
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       <div>
@@ -122,10 +117,7 @@ export default async function CandidaturaDetalhePage({ params }: { params: { id:
             </p>
           </div>
 
-          <div className="bg-[#FFF8F2] p-4 rounded-2xl border border-[#FDCFA9] text-right">
-            <span className="text-xs text-[#78716c] block">Compatibilidade</span>
-            <span className="text-xl font-black text-[#E65100]">{application.matchScore}%</span>
-          </div>
+          {/* V2 matching hidden */}
         </div>
 
         {/* Situação Atual */}
@@ -134,6 +126,15 @@ export default async function CandidaturaDetalhePage({ params }: { params: { id:
           <h2 className="text-lg font-black text-[#2E221F]">{currentStatusInfo.label}</h2>
           <p className="text-xs text-[#57433C]">{currentStatusInfo.desc}</p>
         </div>
+
+        {application.interview && (
+          <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-1 text-sm text-emerald-950">
+            <h3 className="font-bold">Detalhes da entrevista</h3>
+            <p><strong>Data:</strong> {new Date(application.interview.scheduledAt).toLocaleString("pt-BR")}</p>
+            {application.interview.location && <p><strong>Local:</strong> {application.interview.location}</p>}
+            {application.interview.instructions && <p><strong>Orientações:</strong> {application.interview.instructions}</p>}
+          </div>
+        )}
 
         {/* Linha do Tempo / Histórico */}
         <div className="space-y-4 pt-4 border-t border-[#FEEDDF]">
@@ -159,23 +160,7 @@ export default async function CandidaturaDetalhePage({ params }: { params: { id:
           </div>
         </div>
 
-        {/* Justificativa de Compatibilidade */}
-        {matchExplanations.length > 0 && (
-          <div className="space-y-2 pt-4 border-t border-[#FEEDDF]">
-            <h3 className="text-xs font-bold text-[#2E221F] flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-[#E65100]" />
-              <span>Pontos de Destaque do seu Perfil nesta Vaga:</span>
-            </h3>
-            <ul className="space-y-1 text-xs text-[#57433C]">
-              {matchExplanations.map((exp, idx) => (
-                <li key={idx} className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#E65100] shrink-0" />
-                  <span>{exp}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        {/* V2 matching hidden */}
       </div>
     </div>
   );

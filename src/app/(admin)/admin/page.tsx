@@ -3,7 +3,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { getSession } from "@/lib/auth/session";
-import { isAdmin, canPerformAssistedService } from "@/lib/auth/rbac";
+import {
+  canManageCourses,
+  canManageUsers,
+  canPerformAssistedService,
+  canViewIndicators,
+  isAdmin,
+} from "@/lib/auth/rbac";
 import {
   ShieldCheck,
   Briefcase,
@@ -15,6 +21,9 @@ import {
   ArrowRight,
   AlertCircle,
   BarChart3,
+  BookOpen,
+  UserCog,
+  ClipboardList,
 } from "lucide-react";
 
 export default async function AdminDashboardPage() {
@@ -78,7 +87,7 @@ export default async function AdminDashboardPage() {
                 {pendingJobsCount} {pendingJobsCount === 1 ? "vaga aguardando moderação" : "vagas aguardando moderação"}
               </h4>
               <p className="text-xs text-amber-800">
-                Empresas enviaram novas vagas para revisão pela comissão da ACA/Prefeitura.
+                Há vagas cadastradas pela equipe administrativa aguardando conclusão da moderação.
               </p>
             </div>
           </div>
@@ -120,7 +129,7 @@ export default async function AdminDashboardPage() {
 
         <div className="bg-white p-5 rounded-2xl border border-[#FEEDDF] space-y-1">
           <span className="text-xs text-[#78716c]">Cursos Ativos</span>
-          <div className="text-2xl font-black text-purple-600">{activeCoursesCount}</div>
+          <div className="text-2xl font-black text-[#E65100]">{activeCoursesCount}</div>
         </div>
       </div>
 
@@ -139,6 +148,17 @@ export default async function AdminDashboardPage() {
             Aprovar, pausar, rejeitar ou publicar vagas diretamente em nome de empresas parceiras.
           </p>
         </Link>
+
+        {isAdmin(session.role) && (
+          <Link
+            href="/admin/vagas/nova"
+            className="bg-white p-6 rounded-3xl border border-[#FEEDDF] hover:border-[#E65100] hover:shadow-sm transition space-y-2 group"
+          >
+            <Briefcase className="w-6 h-6 text-[#E65100]" />
+            <h3 className="font-bold text-base text-[#2E221F]">Cadastrar vaga</h3>
+            <p className="text-xs text-[#78716c]">Registrar uma oportunidade em nome de uma empresa parceira.</p>
+          </Link>
+        )}
 
         <Link
           href="/admin/atendimento-assistido"
@@ -182,19 +202,34 @@ export default async function AdminDashboardPage() {
           </p>
         </Link>
 
-        <Link
-          href="/admin/indicadores"
-          className="bg-white p-6 rounded-3xl border border-[#FEEDDF] hover:border-[#E65100] hover:shadow-sm transition space-y-2 group"
-        >
-          <div className="flex items-center justify-between">
+        {canViewIndicators(session.role) && (
+          <Link href="/admin/indicadores" className="bg-white p-6 rounded-3xl border border-[#FEEDDF] hover:border-[#E65100] hover:shadow-sm transition space-y-2 group">
             <BarChart3 className="w-6 h-6 text-[#E65100]" />
-            <ArrowRight className="w-4 h-4 text-[#78716c] group-hover:translate-x-1 transition" />
-          </div>
-          <h3 className="font-bold text-base text-[#2E221F]">Relatórios & Indicadores</h3>
-          <p className="text-xs text-[#78716c]">
-            Gráficos consolidados por área, cliques em cursos e exportação de dados auditada.
-          </p>
-        </Link>
+            <h3 className="font-bold text-base text-[#2E221F]">Relatórios & Indicadores</h3>
+            <p className="text-xs text-[#78716c]">Dados consolidados de vagas, candidaturas, cursos e preenchimentos.</p>
+          </Link>
+        )}
+        {canManageCourses(session.role) && (
+          <Link href="/admin/cursos" className="bg-white p-6 rounded-3xl border border-[#FEEDDF] hover:border-[#E65100] hover:shadow-sm transition space-y-2 group">
+            <BookOpen className="w-6 h-6 text-[#E65100]" />
+            <h3 className="font-bold text-base text-[#2E221F]">Cursos</h3>
+            <p className="text-xs text-[#78716c]">Cadastrar e acompanhar oportunidades de qualificação.</p>
+          </Link>
+        )}
+        {canManageUsers(session.role) && (
+          <Link href="/admin/usuarios" className="bg-white p-6 rounded-3xl border border-[#FEEDDF] hover:border-[#E65100] hover:shadow-sm transition space-y-2 group">
+            <UserCog className="w-6 h-6 text-[#E65100]" />
+            <h3 className="font-bold text-base text-[#2E221F]">Usuários</h3>
+            <p className="text-xs text-[#78716c]">Gerenciar operadores e administradores.</p>
+          </Link>
+        )}
+        {isAdmin(session.role) && (
+          <Link href="/admin/auditoria" className="bg-white p-6 rounded-3xl border border-[#FEEDDF] hover:border-[#E65100] hover:shadow-sm transition space-y-2 group">
+            <ClipboardList className="w-6 h-6 text-[#E65100]" />
+            <h3 className="font-bold text-base text-[#2E221F]">Auditoria</h3>
+            <p className="text-xs text-[#78716c]">Consultar ações administrativas recentes.</p>
+          </Link>
+        )}
       </div>
     </div>
   );

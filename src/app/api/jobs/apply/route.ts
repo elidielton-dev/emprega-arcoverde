@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
         include: {
           resumeVersions: {
             where: { isCurrent: true },
+            include: { experiences: { select: { id: true }, take: 1 } },
             take: 1,
           },
         },
@@ -43,6 +44,25 @@ export async function POST(req: NextRequest) {
 
     if (!candidateProfile) {
       return formRedirect(new URL("/painel/perfil?aviso=complete_perfil", req.url));
+    }
+
+    const latestResume = candidateProfile.resumeVersions[0];
+    let storedSkills: string[] = [];
+    try {
+      const parsed = latestResume?.skillsSnapshot ? JSON.parse(latestResume.skillsSnapshot) : [];
+      storedSkills = Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+    } catch {
+      storedSkills = [];
+    }
+    const hasCurrentResume = Boolean(
+      latestResume &&
+      (latestResume.summary?.trim() ||
+        latestResume.headline?.trim() ||
+        storedSkills.length > 0 ||
+        latestResume.experiences.length > 0),
+    );
+    if (!hasCurrentResume) {
+      return formRedirect(new URL("/painel/curriculo?aviso=curriculo_incompleto", req.url));
     }
 
     // Verificar se já se candidatou
@@ -60,9 +80,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Calcular match determinístico
-    const candidateSkills = candidateProfile.resumeVersions[0]?.skillsSnapshot
-      ? JSON.parse(candidateProfile.resumeVersions[0].skillsSnapshot)
-      : [];
+    const candidateSkills = storedSkills;
     const requiredSkills = job.skillsText ? job.skillsText.split(",").map((s) => s.trim()) : [];
 
     const matchResult = calculateJobMatch(
@@ -81,8 +99,6 @@ export async function POST(req: NextRequest) {
         categorySlug: job.category.slug,
       }
     );
-
-    const latestResume = candidateProfile.resumeVersions[0];
 
     // Criar candidatura
     const application = await prisma.application.create({

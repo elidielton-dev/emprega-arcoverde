@@ -184,11 +184,26 @@ model Job {
   
   publishedAt          DateTime?
   closedAt             DateTime?
+  selectionResult      String?      // FILLED, NOT_FILLED, CANCELLED
+  filledVacanciesCount Int?
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
 
   reviews              JobPublicationReview[]
   applications         Application[]
+  changeRequests       JobChangeRequest[]
+}
+
+model JobChangeRequest {
+  id             String    @id @default(cuid())
+  jobId          String
+  job            Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  requestedById  String
+  message        String
+  status         String    @default("PENDING") // PENDING, APPLIED, REJECTED
+  adminNotes     String?
+  createdAt      DateTime  @default(now())
+  resolvedAt     DateTime?
 }
 
 model JobPublicationReview {
@@ -229,6 +244,10 @@ model CandidateProfile {
   assistedBy           User?     @relation("AssistedByOperator", fields: [assistedById], references: [id])
   assistedUnit         String?   // e.g. "Sala do Empreendedor", "ACA Atendimento"
   assistedNotes        String?
+  validationStatus     String    @default("PENDING") // PENDING, VALIDATED, REJECTED
+  validationNotes      String?
+  validatedAt          DateTime?
+  validatedById        String?
   
   emailConsent         Boolean   @default(true)
   whatsappConsent      Boolean   @default(false)

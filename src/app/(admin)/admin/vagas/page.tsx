@@ -13,8 +13,8 @@ import {
   ShieldAlert,
   ArrowLeft,
   CheckCircle2,
-  Building,
-  Users,
+  Plus,
+  Trash2,
 } from "lucide-react";
 
 interface AdminVagasPageProps {
@@ -34,6 +34,9 @@ export default async function AdminVagasPage({ searchParams }: AdminVagasPagePro
       company: true,
       category: true,
       _count: { select: { applications: true } },
+      changeRequests: {
+        orderBy: { createdAt: "desc" },
+      },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -49,20 +52,25 @@ export default async function AdminVagasPage({ searchParams }: AdminVagasPagePro
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-      <div>
-        <Link
-          href="/admin"
-          className="inline-flex items-center gap-2 text-xs text-[#78716c] hover:text-[#E65100] mb-2"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Voltar ao painel de governança</span>
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div>
+          <Link
+            href="/admin"
+            className="inline-flex items-center gap-2 text-xs text-[#78716c] hover:text-[#E65100] mb-2"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Voltar ao painel de governança</span>
+          </Link>
+          <h1 className="text-2xl sm:text-3xl font-black text-[#2E221F] tracking-tight">
+            Moderação & Gestão Global de Vagas
+          </h1>
+          <p className="text-xs text-[#78716c]">
+            Cadastre e gerencie as vagas institucionais registradas pela ACA/Prefeitura.
+          </p>
+        </div>
+        <Link href="/admin/vagas/nova" className="inline-flex items-center gap-2 rounded-xl bg-[#E65100] px-5 py-3 text-xs font-bold text-white shadow-md hover:bg-[#D84315]">
+          <Plus className="w-4 h-4" /> Cadastrar vaga
         </Link>
-        <h1 className="text-2xl sm:text-3xl font-black text-[#2E221F] tracking-tight">
-          Moderação & Gestão Global de Vagas
-        </h1>
-        <p className="text-xs text-[#78716c]">
-          Aprove, rejeite ou pause oportunidades de emprego submetidas pelas empresas em Arcoverde.
-        </p>
       </div>
 
       {searchParams.sucesso && (
@@ -122,6 +130,19 @@ export default async function AdminVagasPage({ searchParams }: AdminVagasPagePro
                 </div>
               </div>
 
+              {job.changeRequests.length > 0 && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+                  <h3 className="text-xs font-extrabold text-amber-900">Solicitações de alteração da empresa</h3>
+                  {job.changeRequests.map((request) => (
+                    <div key={request.id} className="text-xs text-amber-950">
+                      <span className="font-bold">{request.status}</span>
+                      <span className="text-amber-700"> • {new Date(request.createdAt).toLocaleString("pt-BR")}</span>
+                      <p className="mt-1 whitespace-pre-wrap">{request.message}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* Ações de Moderação */}
               <div className="pt-2 border-t border-[#FEEDDF] flex flex-wrap items-center justify-between gap-3">
                 <Link
@@ -133,7 +154,7 @@ export default async function AdminVagasPage({ searchParams }: AdminVagasPagePro
                 </Link>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  {job.status !== "PUBLISHED" && (
+                  {(job.status === "DRAFT" || job.status === "PENDING_REVIEW") && (
                     <form action={`/api/admin/jobs/${job.id}/review`} method="POST">
                       <input type="hidden" name="action" value="APPROVE" />
                       <button
@@ -159,7 +180,25 @@ export default async function AdminVagasPage({ searchParams }: AdminVagasPagePro
                     </form>
                   )}
 
-                  {job.status !== "REJECTED" && job.status !== "CLOSED" && (
+                  {job.status === "PUBLISHED" && (
+                    <form action={`/api/admin/jobs/${job.id}/review`} method="POST">
+                      <input type="hidden" name="action" value="CLOSE" />
+                      <button type="submit" className="bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs px-4 py-2 rounded-xl border border-red-200 transition">
+                        Encerrar
+                      </button>
+                    </form>
+                  )}
+
+                  {(job.status === "CLOSED" || job.status === "PAUSED" || job.status === "REJECTED") && (
+                    <form action={`/api/admin/jobs/${job.id}/review`} method="POST">
+                      <input type="hidden" name="action" value="REOPEN" />
+                      <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition flex items-center gap-1.5">
+                        <Play className="w-3.5 h-3.5" /> Reabrir e publicar
+                      </button>
+                    </form>
+                  )}
+
+                  {(job.status === "DRAFT" || job.status === "PENDING_REVIEW") && (
                     <form action={`/api/admin/jobs/${job.id}/review`} method="POST">
                       <input type="hidden" name="action" value="REJECT" />
                       <button
@@ -171,6 +210,12 @@ export default async function AdminVagasPage({ searchParams }: AdminVagasPagePro
                       </button>
                     </form>
                   )}
+
+                  <form action={`/api/admin/jobs/${job.id}/delete`} method="POST">
+                    <button type="submit" className="bg-white hover:bg-red-50 text-red-700 font-bold text-xs px-3 py-2 rounded-xl border border-red-200 transition" title="Excluir vaga">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </form>
                 </div>
               </div>
             </div>

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import { Mail, ArrowLeft, Send } from "lucide-react";
 
-export default function EsqueciSenhaPage() {
+export default function EsqueciSenhaPage({ searchParams }: { searchParams: { sucesso?: string } }) {
   return (
     <div className="min-h-[80vh] flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-[#F4F5F7]">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center space-y-3">
@@ -18,7 +18,12 @@ export default function EsqueciSenhaPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-6 sm:px-10 rounded-3xl border border-[#FEEDDF] shadow-md space-y-6">
-          <form action="/entrar?sucesso=email_recuperacao_enviado" method="GET" className="space-y-4">
+          {searchParams.sucesso && (
+            <p className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+              Se o e-mail estiver cadastrado, enviaremos um link válido por uma hora.
+            </p>
+          )}
+          <form action="/api/auth/forgot-password" method="POST" className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-[#57433C] mb-1">
                 E-mail cadastrado

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { getSession } from "@/lib/auth/session";
-import { canViewAllCandidates } from "@/lib/auth/rbac";
+import { canDeleteCurriculum, canValidateCurriculum, canViewAllCandidates } from "@/lib/auth/rbac";
 import { containsInsensitive } from "@/lib/db/search";
 import {
   Users,
@@ -33,6 +33,8 @@ export default async function AdminCandidatosPage({ searchParams }: AdminCandida
 
   const query = searchParams.q?.trim() || "";
   const origem = searchParams.origem || "";
+  const mayValidate = canValidateCurriculum(session.role);
+  const mayDelete = canDeleteCurriculum(session.role);
 
   const where: any = {};
   if (query) {
@@ -143,6 +145,19 @@ export default async function AdminCandidatosPage({ searchParams }: AdminCandida
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                        cand.validationStatus === "VALIDATED"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : cand.validationStatus === "REJECTED"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-amber-100 text-amber-900"
+                      }`}>
+                        {cand.validationStatus === "VALIDATED"
+                          ? "Currículo validado"
+                          : cand.validationStatus === "REJECTED"
+                            ? "Currículo rejeitado"
+                            : "Validação pendente"}
+                      </span>
                       {cand.isAssisted ? (
                         <span className="text-[10px] bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded">
                           Atendimento Presencial ({cand.assistedUnit || "Sala do Empreendedor"})
@@ -217,6 +232,33 @@ export default async function AdminCandidatosPage({ searchParams }: AdminCandida
                     </a>
                   )}
                 </div>
+
+                {mayValidate && (
+                  <form action={`/api/admin/candidates/${cand.id}/validate`} method="POST" className="grid sm:grid-cols-[1fr_auto_auto] gap-2 pt-3 border-t border-[#FEEDDF]">
+                    <input
+                      name="notes"
+                      defaultValue={cand.validationNotes || ""}
+                      placeholder="Observações da validação (opcional)"
+                      className="px-3 py-2 rounded-xl border border-[#FEEDDF] text-xs"
+                    />
+                    <button name="status" value="VALIDATED" className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold">
+                      Validar
+                    </button>
+                    <button name="status" value="REJECTED" className="px-4 py-2 rounded-xl bg-red-50 text-red-700 border border-red-200 font-bold">
+                      Rejeitar
+                    </button>
+                  </form>
+                )}
+
+                {mayDelete ? (
+                  <form action={`/api/admin/candidates/${cand.id}/delete`} method="POST" className="text-right">
+                    <button className="text-xs font-bold text-red-700 hover:underline">
+                      Excluir currículo e dados relacionados
+                    </button>
+                  </form>
+                ) : session.role === "ACA_ADMIN" ? (
+                  <p className="text-[11px] text-[#78716c]">A ACA pode validar, mas a exclusão é restrita à gestão municipal.</p>
+                ) : null}
               </div>
             );
           })

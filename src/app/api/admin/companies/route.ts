@@ -5,6 +5,9 @@ import { canRegisterCompany } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/audit/audit";
 import { formRedirect } from "@/lib/http/form-redirect";
 import { institutionFromRole, isValidCnpj, normalizeCnpj } from "@/lib/company/cnpj";
+import bcrypt from "bcryptjs";
+import { randomBytes } from "crypto";
+import { sendEmail } from "@/lib/mail/mailer";
 
 export async function POST(req: NextRequest) {
   try {
@@ -63,6 +66,44 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    let memberProvisioning = "not_requested";
+    if (email) {
+      const existingUser = await prisma.user.findUnique({ where: { email } });
+      if (existingUser?.role === "CANDIDATE") {
+        memberProvisioning = "skipped_candidate_email";
+      } else if (existingUser && existingUser.role !== "COMPANY_MEMBER") {
+        memberProvisioning = "skipped_role_conflict";
+      } else {
+        let member = existingUser;
+        let temporaryPassword: string | null = null;
+        if (!member) {
+          temporaryPassword = `${randomBytes(6).toString("base64url")}Acv!`;
+          member = await prisma.user.create({
+            data: {
+              name: contactName || tradeName || name,
+              email,
+              passwordHash: await bcrypt.hash(temporaryPassword, 10),
+              role: "COMPANY_MEMBER",
+              isEmailVerified: true,
+            },
+          });
+        }
+        await prisma.companyMember.upsert({
+          where: { userId_companyId: { userId: member.id, companyId: company.id } },
+          update: { role: "OWNER" },
+          create: { userId: member.id, companyId: company.id, role: "OWNER" },
+        });
+        memberProvisioning = temporaryPassword ? "created" : "linked";
+        if (temporaryPassword) {
+          await sendEmail({
+            to: email,
+            subject: "Acesso da empresa — Emprega Arcoverde",
+            html: `<p>Olá, ${member.name}.</p><p>Sua empresa foi cadastrada no Emprega Arcoverde.</p><p>Senha temporária: <strong>${temporaryPassword}</strong></p><p>Entre em ${process.env.APP_URL || "http://localhost:3000"}/entrar e altere sua senha pela recuperação de acesso.</p>`,
+          });
+        }
+      }
+    }
+
     await logAudit({
       userId: session.userId,
       action: "COMPANY_CREATED",
@@ -73,6 +114,7 @@ export async function POST(req: NextRequest) {
         name,
         status: "ACTIVE",
         institution,
+        memberProvisioning,
       },
     });
 

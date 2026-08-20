@@ -4,6 +4,17 @@ import { getSession } from "@/lib/auth/session";
 import { logAudit } from "@/lib/audit/audit";
 import { isAdmin } from "@/lib/auth/rbac";
 import { formRedirect } from "@/lib/http/form-redirect";
+import { generateInterviewInviteEmail, sendEmail } from "@/lib/mail/mailer";
+
+const ALLOWED_STATUSES = [
+  "SUBMITTED",
+  "UNDER_REVIEW",
+  "CONTACT_SELECTED",
+  "INTERVIEW_SCHEDULED",
+  "APPROVED",
+  "NOT_SELECTED",
+  "WITHDRAWN",
+];
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -16,11 +27,23 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const formData = await req.formData();
     const newStatus = formData.get("status") as string;
     const notes = (formData.get("notes") as string)?.trim() || null;
+    const scheduledAtValue = (formData.get("scheduledAt") as string)?.trim();
+    const location = (formData.get("location") as string)?.trim() || null;
+    const instructions = (formData.get("instructions") as string)?.trim() || null;
+
+    if (!ALLOWED_STATUSES.includes(newStatus)) {
+      return NextResponse.json({ error: "Status inválido" }, { status: 400 });
+    }
+    const scheduledAt = scheduledAtValue ? new Date(scheduledAtValue) : null;
+    if (newStatus === "INTERVIEW_SCHEDULED" && (!scheduledAt || Number.isNaN(scheduledAt.getTime()))) {
+      return NextResponse.json({ error: "Informe data e hora válidas para a entrevista" }, { status: 400 });
+    }
 
     const application = await prisma.application.findUnique({
       where: { id: applicationId },
       include: {
         job: true,
+        candidate: { include: { user: true } },
       },
     });
 
@@ -33,28 +56,49 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
 
-    await prisma.$transaction([
-      prisma.application.update({
+    await prisma.$transaction(async (tx) => {
+      await tx.application.update({
         where: { id: applicationId },
         data: { status: newStatus },
-      }),
-      prisma.applicationStatusHistory.create({
+      });
+      await tx.applicationStatusHistory.create({
         data: {
           applicationId,
           status: newStatus,
           notes,
           changedById: session.userId,
         },
-      }),
-    ]);
+      });
+      if (newStatus === "INTERVIEW_SCHEDULED" && scheduledAt) {
+        await tx.interview.upsert({
+          where: { applicationId },
+          update: { scheduledAt, location, instructions, status: "SCHEDULED" },
+          create: { applicationId, scheduledAt, location, instructions },
+        });
+      }
+    });
 
     await logAudit({
       userId: session.userId,
       action: "APPLICATION_STATUS_UPDATED",
       resourceType: "Application",
       resourceId: applicationId,
-      details: { newStatus, notes },
+      details: { newStatus, notes, scheduledAt: scheduledAt?.toISOString(), location },
     });
+
+    if (newStatus === "INTERVIEW_SCHEDULED" && scheduledAt) {
+      await sendEmail({
+        to: application.candidate.user.email,
+        subject: `Entrevista agendada: ${application.job.title}`,
+        html: generateInterviewInviteEmail(
+          application.candidate.fullName,
+          application.job.title,
+          scheduledAt,
+          location,
+          instructions,
+        ),
+      });
+    }
 
     return formRedirect(new URL(`/empresa/vagas/${application.jobId}/candidaturas?sucesso=status_atualizado`, req.url));
   } catch (error) {

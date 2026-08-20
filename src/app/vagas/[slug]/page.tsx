@@ -3,7 +3,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { getSession } from "@/lib/auth/session";
-import { calculateJobMatch } from "@/lib/matching/calculator";
 import {
   Briefcase,
   MapPin,
@@ -15,7 +14,6 @@ import {
   Clock,
   ShieldAlert,
   ArrowLeft,
-  Sparkles,
   Users,
   AlertCircle,
 } from "lucide-react";
@@ -57,7 +55,6 @@ export default async function JobSlugPage({ params }: JobSlugPageProps) {
   const session = await getSession();
 
   let existingApplication = null;
-  let candidateMatch = null;
   let candidateProfile = null;
 
   if (session && session.role === "CANDIDATE") {
@@ -81,29 +78,7 @@ export default async function JobSlugPage({ params }: JobSlugPageProps) {
         },
       });
 
-      // Calcular match explicável em tempo real
-      const candidateSkills = candidateProfile.resumeVersions[0]?.skillsSnapshot
-        ? JSON.parse(candidateProfile.resumeVersions[0].skillsSnapshot)
-        : [];
-
-      const requiredSkills = job.skillsText ? job.skillsText.split(",").map((s) => s.trim()) : [];
-
-      candidateMatch = calculateJobMatch(
-        {
-          city: candidateProfile.city,
-          educationLevel: candidateProfile.educationLevel,
-          driverLicense: candidateProfile.driverLicense,
-          skills: candidateSkills,
-          categorySlug: job.category.slug,
-        },
-        {
-          city: job.city,
-          educationLevel: job.educationLevel,
-          driverLicense: job.driverLicense,
-          requiredSkills: requiredSkills,
-          categorySlug: job.category.slug,
-        }
-      );
+      // V2 matching hidden: o cálculo permanece apenas no envio da candidatura.
     }
   }
 
@@ -207,32 +182,7 @@ export default async function JobSlugPage({ params }: JobSlugPageProps) {
         </div>
       </div>
 
-      {/* Painel de Compatibilidade Explicável (Se candidato logado) */}
-      {candidateMatch && (
-        <div className="bg-gradient-to-r from-[#FFF8F2] to-[#FEEDDF]/60 rounded-3xl p-6 border border-[#FDCFA9] space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#E65100]" />
-              <h2 className="font-bold text-[#2E221F] text-base">Índice de Compatibilidade com seu Perfil</h2>
-            </div>
-            <span className="text-lg font-black text-[#E65100] bg-white px-3 py-1 rounded-xl shadow-xs border border-[#FDCFA9]">
-              {candidateMatch.score}% compatível
-            </span>
-          </div>
-
-          <div className="space-y-1.5 pt-2 text-xs text-[#57433C]">
-            {candidateMatch.explanations.map((exp, idx) => (
-              <div key={idx} className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#E65100] shrink-0 mt-0.5" />
-                <span>{exp}</span>
-              </div>
-            ))}
-          </div>
-          <p className="text-[11px] text-[#A8A29E] pt-1">
-            * Este índice é determinístico e explicativo, auxiliando você e o recrutador. Nenhuma candidatura é descartada automaticamente.
-          </p>
-        </div>
-      )}
+      {/* V2 matching hidden */}
 
       {/* Corpo da Descrição */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

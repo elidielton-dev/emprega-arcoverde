@@ -33,55 +33,40 @@ export async function POST(req: NextRequest) {
       return formRedirect(new URL("/admin/atendimento-assistido?erro=dados_incompletos", req.url));
     }
 
-    // Verificar se usuário já existe
-    let user = await prisma.user.findUnique({
+    const existingUser = await prisma.user.findUnique({
       where: { email },
+      include: { candidateProfile: true },
     });
 
-    if (!user) {
-      // Senha temporária aleatória segura (não exposta ao operador)
-      const randomPassword = Math.random().toString(36).substring(2, 12) + "Acv!";
-      const passwordHash = await bcrypt.hash(randomPassword, 10);
-
-      user = await prisma.user.create({
-        data: {
-          name: fullName,
-          email,
-          passwordHash,
-          role: "CANDIDATE",
-          isEmailVerified: true,
-          consents: {
-            create: [
-              { type: "TERMS", accepted: true },
-              { type: "PRIVACY", accepted: true },
-              { type: "ASSISTED_SERVICE_CONSENT", accepted: true },
-            ],
-          },
-        },
-      });
+    // ERS RN009–012 / RF013: cadastro assistido não altera currículo já existente
+    if (existingUser) {
+      return formRedirect(new URL("/admin/atendimento-assistido?erro=email_ja_cadastrado", req.url));
     }
+
+    const randomPassword = Math.random().toString(36).substring(2, 12) + "Acv!";
+    const passwordHash = await bcrypt.hash(randomPassword, 10);
+
+    const user = await prisma.user.create({
+      data: {
+        name: fullName,
+        email,
+        passwordHash,
+        role: "CANDIDATE",
+        isEmailVerified: true,
+        consents: {
+          create: [
+            { type: "TERMS", accepted: true },
+            { type: "PRIVACY", accepted: true },
+            { type: "ASSISTED_SERVICE_CONSENT", accepted: true },
+          ],
+        },
+      },
+    });
 
     const skillsArray = skills.split(",").map((s) => s.trim()).filter(Boolean);
 
-    // Criar ou atualizar perfil com marcação assistida
-    const profile = await prisma.candidateProfile.upsert({
-      where: { userId: user.id },
-      update: {
-        fullName,
-        phone,
-        whatsapp,
-        city,
-        neighborhood,
-        educationLevel,
-        driverLicense,
-        professionalHeadline,
-        summary,
-        isAssisted: true,
-        assistedById: session.userId,
-        assistedUnit,
-        assistedNotes,
-      },
-      create: {
+    const profile = await prisma.candidateProfile.create({
+      data: {
         userId: user.id,
         fullName,
         phone,
@@ -96,10 +81,10 @@ export async function POST(req: NextRequest) {
         assistedById: session.userId,
         assistedUnit,
         assistedNotes,
+        validationStatus: "PENDING",
       },
     });
 
-    // Criar versão do currículo
     await prisma.resumeVersion.create({
       data: {
         candidateId: profile.id,
@@ -125,7 +110,9 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return formRedirect(new URL(`/admin/atendimento-assistido?sucesso=cadastro_concluido&nome=${encodeURIComponent(fullName)}`, req.url));
+    return formRedirect(
+      new URL(`/admin/atendimento-assistido?sucesso=cadastro_concluido&nome=${encodeURIComponent(fullName)}`, req.url),
+    );
   } catch (error) {
     console.error("Erro no cadastro assistido:", error);
     return formRedirect(new URL("/admin/atendimento-assistido?erro=falha_servidor", req.url));

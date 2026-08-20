@@ -1,97 +1,12 @@
-import { NextRequest } from "next/server";
-import { formRedirect } from "@/lib/http/form-redirect";
-import { prisma } from "@/lib/db/prisma";
-import { getSession } from "@/lib/auth/session";
-import { logAudit } from "@/lib/audit/audit";
-import { isAdmin } from "@/lib/auth/rbac";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: NextRequest) {
-  try {
-    const session = await getSession();
-    if (!session || (session.role !== "COMPANY_MEMBER" && !isAdmin(session.role))) {
-      return formRedirect(new URL("/entrar", req.url));
-    }
-
-    const formData = await req.formData();
-    const title = (formData.get("title") as string)?.trim();
-    const categoryId = formData.get("categoryId") as string;
-    const summary = (formData.get("summary") as string)?.trim();
-    const description = (formData.get("description") as string)?.trim();
-    const contractType = (formData.get("contractType") as string) || "CLT";
-    const workplaceType = (formData.get("workplaceType") as string) || "PRESENCIAL";
-    const city = (formData.get("city") as string)?.trim() || "Arcoverde";
-    const state = (formData.get("state") as string)?.trim() || "PE";
-    const educationLevel = (formData.get("educationLevel") as string) || "MEDIO";
-    const experienceRequired = (formData.get("experienceRequired") as string) || "SEM_EXPERIENCIA";
-    const driverLicense = (formData.get("driverLicense") as string) || "NENHUMA";
-    const vacanciesCount = parseInt(formData.get("vacanciesCount") as string, 10) || 1;
-    const requirements = (formData.get("requirements") as string)?.trim() || "";
-    const skillsText = (formData.get("skillsText") as string)?.trim() || null;
-    const isConfidential = formData.get("isConfidential") === "on";
-    const actionType = (formData.get("actionType") as string) || "SUBMIT"; // DRAFT or SUBMIT
-    const targetCompanyId = (formData.get("companyId") as string) || session.companyId;
-
-    if (!title || !categoryId || !summary || !description || !targetCompanyId) {
-      return formRedirect(new URL("/empresa/vagas/nova?erro=campos_obrigatorios", req.url));
-    }
-
-    // Gerar slug único amigável
-    const baseSlug = title
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-    const uniqueSlug = `${baseSlug}-${Math.random().toString(36).substring(2, 7)}`;
-
-    // Regra: se admin cria, pode publicar direto se quiser, se empresa cria -> PENDING_REVIEW ou DRAFT
-    let status = "PENDING_REVIEW";
-    if (actionType === "DRAFT") {
-      status = "DRAFT";
-    } else if (isAdmin(session.role)) {
-      status = "PUBLISHED";
-    }
-
-    const job = await prisma.job.create({
-      data: {
-        title,
-        slug: uniqueSlug,
-        companyId: targetCompanyId,
-        createdById: session.userId,
-        categoryId,
-        summary,
-        description,
-        contractType,
-        workplaceType,
-        city,
-        state,
-        vacanciesCount,
-        educationLevel,
-        experienceRequired,
-        driverLicense,
-        requirements,
-        skillsText,
-        isConfidential,
-        status,
-        publishedAt: status === "PUBLISHED" ? new Date() : null,
-      },
-    });
-
-    await logAudit({
-      userId: session.userId,
-      action: status === "PUBLISHED" ? "JOB_PUBLISHED" : "JOB_SUBMITTED_FOR_REVIEW",
-      resourceType: "Job",
-      resourceId: job.id,
-      details: { title, isConfidential, status },
-    });
-
-    if (isAdmin(session.role)) {
-      return formRedirect(new URL(`/admin/vagas?sucesso=vaga_criada`, req.url));
-    }
-
-    return formRedirect(new URL(`/empresa/vagas?sucesso=vaga_enviada`, req.url));
-  } catch (error) {
-    console.error("Erro ao criar vaga:", error);
-    return formRedirect(new URL("/empresa/vagas/nova?erro=falha", req.url));
-  }
+/** Empresa não cria vagas (ERS RN025). Use POST /api/admin/jobs. */
+export async function POST(_req: NextRequest) {
+  return NextResponse.json(
+    {
+      error:
+        "Somente ACA ou Prefeitura podem cadastrar vagas. A empresa solicita o cadastro pelo atendimento institucional.",
+    },
+    { status: 403 },
+  );
 }

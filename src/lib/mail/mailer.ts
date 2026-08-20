@@ -50,3 +50,35 @@ export function generateApplicationConfirmationEmail(jobTitle: string, candidate
     </div>
   `;
 }
+
+export function generatePasswordResetEmail(name: string, token: string) {
+  const url = `${process.env.APP_URL || "http://localhost:3000"}/redefinir-senha?token=${encodeURIComponent(token)}`;
+  return `
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+      <h1 style="color: #e65100; font-size: 22px;">Redefinição de senha</h1>
+      <p>Olá, <strong>${name}</strong>.</p>
+      <p>Recebemos uma solicitação para redefinir sua senha. O link abaixo é válido por uma hora.</p>
+      <p><a href="${url}" style="background:#e65100;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;display:inline-block;">Criar nova senha</a></p>
+      <p>Se você não fez esta solicitação, ignore esta mensagem.</p>
+    </div>
+  `;
+}
+
+export function generateInterviewInviteEmail(
+  candidateName: string,
+  jobTitle: string,
+  scheduledAt: Date,
+  location?: string | null,
+  instructions?: string | null,
+) {
+  return `
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+      <h1 style="color: #e65100; font-size: 22px;">Entrevista agendada</h1>
+      <p>Olá, <strong>${candidateName}</strong>.</p>
+      <p>Sua entrevista para <strong>${jobTitle}</strong> foi agendada para <strong>${scheduledAt.toLocaleString("pt-BR")}</strong>.</p>
+      ${location ? `<p><strong>Local:</strong> ${location}</p>` : ""}
+      ${instructions ? `<p><strong>Orientações:</strong> ${instructions}</p>` : ""}
+      <p>Consulte sua candidatura no Emprega Arcoverde para acompanhar o processo.</p>
+    </div>
+  `;
+}

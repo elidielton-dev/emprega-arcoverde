@@ -55,6 +55,17 @@ export default async function AtendimentoAssistidoPage({ searchParams }: Atendim
         </div>
       )}
 
+      {searchParams.erro && (
+        <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-xs text-red-800 flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <p>
+            {searchParams.erro === "email_ja_cadastrado"
+              ? "Este e-mail já pertence a uma conta. O atendimento assistido não pode sobrescrever um currículo existente; peça ao cidadão para recuperar o acesso."
+              : "Não foi possível concluir o cadastro. Revise os dados obrigatórios e tente novamente."}
+          </p>
+        </div>
+      )}
+
       {/* Identificação do Operador */}
       <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200 text-xs text-[#57433C] flex items-center justify-between">
         <div>

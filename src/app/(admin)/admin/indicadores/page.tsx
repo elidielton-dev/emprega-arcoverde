@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { getSession } from "@/lib/auth/session";
-import { isAdmin } from "@/lib/auth/rbac";
+import { canViewIndicators } from "@/lib/auth/rbac";
 import {
   BarChart3,
   ArrowLeft,
@@ -18,8 +18,8 @@ import {
 
 export default async function AdminIndicadoresPage() {
   const session = await getSession();
-  if (!session || !isAdmin(session.role)) {
-    redirect("/entrar");
+  if (!session || !canViewIndicators(session.role)) {
+    redirect("/admin");
   }
 
   // Agregações no banco
@@ -29,6 +29,7 @@ export default async function AdminIndicadoresPage() {
     totalJobs,
     publishedJobs,
     totalApplications,
+    filledJobs,
     categoriesWithCount,
     courses,
   ] = await Promise.all([
@@ -37,6 +38,14 @@ export default async function AdminIndicadoresPage() {
     prisma.job.count(),
     prisma.job.count({ where: { status: "PUBLISHED" } }),
     prisma.application.count(),
+    prisma.job.count({
+      where: {
+        OR: [
+          { selectionResult: "FILLED" },
+          { status: "CLOSED", applications: { some: { status: "APPROVED" } } },
+        ],
+      },
+    }),
     prisma.jobCategory.findMany({
       include: {
         _count: { select: { jobs: true } },
@@ -90,11 +99,17 @@ export default async function AdminIndicadoresPage() {
       </div>
 
       {/* Cards de Métricas Gerais */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         <div className="bg-white p-6 rounded-3xl border border-[#FEEDDF] space-y-1">
           <span className="text-xs text-[#78716c]">Total de Candidatos</span>
           <div className="text-3xl font-black text-[#2E221F]">{totalCandidates}</div>
           <span className="text-[11px] text-emerald-700 font-semibold">100% de cadastros válidos</span>
+        </div>
+
+        <div className="bg-white p-6 rounded-3xl border border-[#FEEDDF] space-y-1">
+          <span className="text-xs text-[#78716c]">Vagas preenchidas</span>
+          <div className="text-3xl font-black text-emerald-600">{filledJobs}</div>
+          <span className="text-[11px] text-[#78716c]">Resultado informado ou aprovação registrada</span>
         </div>
 
         <div className="bg-white p-6 rounded-3xl border border-[#FEEDDF] space-y-1">

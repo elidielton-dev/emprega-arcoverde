@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { getSession } from "@/lib/auth/session";
+import { isAdmin } from "@/lib/auth/rbac";
 import {
   Building2,
   Briefcase,
@@ -17,7 +18,7 @@ import {
 
 export default async function EmpresaDashboardPage() {
   const session = await getSession();
-  if (!session || (session.role !== "COMPANY_MEMBER" && session.role !== "SUPER_ADMIN")) {
+  if (!session || (session.role !== "COMPANY_MEMBER" && !isAdmin(session.role))) {
     redirect("/entrar");
   }
 
@@ -39,7 +40,7 @@ export default async function EmpresaDashboardPage() {
   });
 
   if (!membership) {
-    redirect("/entrar");
+    redirect(isAdmin(session.role) ? "/admin" : "/entrar");
   }
 
   const company = membership.company;
@@ -64,13 +65,9 @@ export default async function EmpresaDashboardPage() {
           </p>
         </div>
 
-        <Link
-          href="/empresa/vagas/nova"
-          className="bg-[#E65100] hover:bg-[#D84315] text-white font-bold text-xs px-5 py-3 rounded-xl shadow-md transition flex items-center gap-2"
-        >
-          <PlusCircle className="w-4 h-4" />
-          <span>Cadastrar Nova Vaga</span>
-        </Link>
+        <div className="max-w-sm rounded-2xl border border-[#FEEDDF] bg-[#FFF8F2] p-4 text-xs leading-relaxed text-[#57433C]">
+          O cadastro de novas vagas é realizado pela ACA/Prefeitura. Envie os dados da oportunidade pelos canais institucionais.
+        </div>
       </div>
 
       {/* Indicadores Resumo */}
@@ -110,13 +107,13 @@ export default async function EmpresaDashboardPage() {
             <Briefcase className="w-12 h-12 text-[#E65100] mx-auto" />
             <h3 className="text-base font-bold text-[#2E221F]">Nenhuma vaga criada ainda</h3>
             <p className="text-xs text-[#78716c]">
-              Publique oportunidades de trabalho para atrair talentos de Arcoverde e região.
+              Solicite à ACA ou à Prefeitura o cadastro da primeira oportunidade.
             </p>
             <Link
-              href="/empresa/vagas/nova"
+              href="/contato"
               className="inline-block bg-[#E65100] text-white font-bold text-xs px-5 py-2.5 rounded-xl"
             >
-              Publicar Primeira Vaga
+              Ver contatos
             </Link>
           </div>
         ) : (

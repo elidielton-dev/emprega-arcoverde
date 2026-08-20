@@ -3,11 +3,17 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { getSession } from "@/lib/auth/session";
-import { Briefcase, Plus, Users, ShieldAlert, ArrowLeft, ArrowRight } from "lucide-react";
+import { isAdmin } from "@/lib/auth/rbac";
+import { isWithinCompanyEditWindow } from "@/lib/jobs/edit-window";
+import { Briefcase, Users, ShieldAlert, ArrowLeft, Pencil, LockKeyhole } from "lucide-react";
 
-export default async function EmpresaVagasListPage() {
+export default async function EmpresaVagasListPage({
+  searchParams,
+}: {
+  searchParams: { sucesso?: string };
+}) {
   const session = await getSession();
-  if (!session || (session.role !== "COMPANY_MEMBER" && session.role !== "SUPER_ADMIN")) {
+  if (!session || (session.role !== "COMPANY_MEMBER" && !isAdmin(session.role))) {
     redirect("/entrar");
   }
 
@@ -29,7 +35,7 @@ export default async function EmpresaVagasListPage() {
   });
 
   if (!membership) {
-    redirect("/entrar");
+    redirect(isAdmin(session.role) ? "/admin/vagas" : "/entrar");
   }
 
   const jobs = membership.company.jobs;
@@ -62,31 +68,34 @@ export default async function EmpresaVagasListPage() {
           </p>
         </div>
 
-        <Link
-          href="/empresa/vagas/nova"
-          className="bg-[#E65100] hover:bg-[#D84315] text-white font-bold text-xs px-5 py-3 rounded-xl shadow-md transition flex items-center gap-2 self-start sm:self-center"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Nova Vaga</span>
-        </Link>
+        <div className="max-w-sm rounded-2xl border border-[#FEEDDF] bg-[#FFF8F2] p-4 text-xs text-[#57433C]">
+          Novas vagas são cadastradas pela ACA/Prefeitura. A empresa acompanha, edita no prazo permitido e encerra a seleção.
+        </div>
       </div>
+
+      {searchParams.sucesso && (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-bold text-emerald-800">
+          Operação realizada com sucesso.
+        </div>
+      )}
 
       <div className="space-y-4">
         {jobs.length === 0 ? (
           <div className="bg-white p-12 rounded-3xl border border-[#FEEDDF] text-center max-w-md mx-auto space-y-3">
             <Briefcase className="w-12 h-12 text-[#E65100] mx-auto" />
             <h3 className="text-base font-bold text-[#2E221F]">Nenhuma vaga cadastrada</h3>
-            <p className="text-xs text-[#78716c]">Cadastre uma nova vaga para iniciar seu processo seletivo.</p>
+            <p className="text-xs text-[#78716c]">Solicite o cadastro da oportunidade à ACA ou à Prefeitura.</p>
             <Link
-              href="/empresa/vagas/nova"
+              href="/contato"
               className="inline-block bg-[#E65100] text-white font-bold text-xs px-5 py-2.5 rounded-xl"
             >
-              Criar Vaga
+              Ver contatos
             </Link>
           </div>
         ) : (
           jobs.map((job) => {
             const badge = statusBadges[job.status] || { label: job.status, bg: "bg-stone-100", text: "text-stone-700" };
+            const canEdit = isWithinCompanyEditWindow(job.createdAt);
 
             return (
               <div
@@ -119,7 +128,14 @@ export default async function EmpresaVagasListPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/empresa/vagas/${job.id}/editar`}
+                    className="border border-[#FEEDDF] hover:bg-[#FFF8F2] text-[#BF360C] font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-1.5"
+                  >
+                    <Pencil className="w-4 h-4" />
+                    <span>{canEdit ? "Editar" : "Solicitar alteração"}</span>
+                  </Link>
                   <Link
                     href={`/empresa/vagas/${job.id}/candidaturas`}
                     className="bg-[#FFF8F2] hover:bg-[#FEEDDF] text-[#BF360C] font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-1.5"
@@ -127,6 +143,20 @@ export default async function EmpresaVagasListPage() {
                     <Users className="w-4 h-4" />
                     <span>Ver Candidatos ({job._count.applications})</span>
                   </Link>
+                  {job.status === "PUBLISHED" && (
+                    <form action={`/api/company/jobs/${job.id}/close`} method="POST" className="flex flex-wrap items-center gap-2 rounded-xl bg-red-50 p-2">
+                      <select name="selectionResult" className="rounded-lg border border-red-200 bg-white px-2 py-2 text-xs text-red-800" defaultValue="">
+                        <option value="">Sem resultado</option>
+                        <option value="FILLED">Preenchida</option>
+                        <option value="NOT_FILLED">Não preenchida</option>
+                        <option value="CANCELLED">Cancelada</option>
+                      </select>
+                      <input name="filledVacanciesCount" type="number" min={0} max={job.vacanciesCount} placeholder="Preenchidas" className="w-24 rounded-lg border border-red-200 px-2 py-2 text-xs" />
+                      <button className="inline-flex items-center gap-1.5 rounded-lg bg-red-700 px-3 py-2 text-xs font-bold text-white">
+                        <LockKeyhole className="w-3.5 h-3.5" /> Encerrar seleção
+                      </button>
+                    </form>
+                  )}
                 </div>
               </div>
             );
