@@ -265,235 +265,111 @@ export function InterviewsBoard({
         </div>
       </SurfaceCard>
 
-      <div className="grid items-start gap-4 xl:grid-cols-[1fr_320px]">
-        <div className="min-w-0 space-y-4">
-          <SurfaceCard className="overflow-hidden">
-            <div className="flex flex-col gap-3 border-b border-[#EEF2F0] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <h3 className="text-sm font-bold text-[#1C1410]">Calendário da semana</h3>
-                <p className="mt-0.5 text-sm font-semibold capitalize text-[#E65100]">
-                  {new Date().toLocaleDateString("pt-BR", {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}
-                </p>
-                <p className="text-[11px] text-[#78716c]">Semana {weekLabel}</p>
-              </div>
-              <div className="flex shrink-0 items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setAnchor(startOfWeek(addDays(anchor, -7)))}
-                  className="rounded-md border border-[#E6E8EB] bg-white p-2 text-[#1C1410] hover:bg-[#F4F5F7]"
-                  aria-label="Semana anterior"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAnchor(startOfWeek(new Date()))}
-                  className="rounded-md border border-[#E6E8EB] bg-white px-3.5 py-2 text-xs font-bold text-[#1C1410] hover:bg-[#F4F5F7]"
-                >
-                  Hoje
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAnchor(startOfWeek(addDays(anchor, 7)))}
-                  className="rounded-md border border-[#E6E8EB] bg-white p-2 text-[#1C1410] hover:bg-[#F4F5F7]"
-                  aria-label="Próxima semana"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 divide-y divide-[#EEF2F0] sm:grid-cols-7 sm:divide-x sm:divide-y-0">
-              {weekDays.map((day, idx) => {
-                const items = byDay.get(day.toDateString()) || [];
-                const isToday = sameDay(day, new Date());
-                return (
-                  <div
-                    key={day.toISOString()}
-                    className={`min-h-[140px] p-2 ${isToday ? "bg-[#FFF4EA]/50" : ""}`}
-                  >
-                    <div className="mb-2 flex items-baseline justify-between gap-1">
-                      <span className="text-[11px] font-semibold text-[#78716c]">{DAY_LABELS[idx]}</span>
-                      <span
-                        className={`inline-flex h-6 min-w-6 items-center justify-center rounded-md px-1 text-xs font-black ${
-                          isToday ? "bg-[#E65100] text-white" : "text-[#1C1410]"
-                        }`}
-                        title={day.toLocaleDateString("pt-BR", {
-                          weekday: "long",
-                          day: "numeric",
-                          month: "long",
-                        })}
-                      >
-                        {day.getDate()}
-                      </span>
-                    </div>
-                    {isToday && (
-                      <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-[#E65100]">
-                        Hoje
-                      </p>
-                    )}
-                    <div className="space-y-1.5">
-                      {items.map((item) => {
-                        const mod = MODALITY_META[item.modality] || MODALITY_META.PRESENCIAL;
-                        return (
-                          <div
-                            key={item.id}
-                            className="rounded-md border border-[#E6E8EB] bg-white px-1.5 py-1.5"
-                          >
-                            <p className="text-[10px] font-bold text-[#E65100]">
-                              {new Date(item.scheduledAt).toLocaleTimeString("pt-BR", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </p>
-                            <p className="truncate text-[11px] font-semibold text-[#1C1410]">
-                              {item.candidateName}
-                            </p>
-                            <p className="truncate text-[10px] text-[#78716c]">{mod.label}</p>
-                          </div>
-                        );
-                      })}
-                      {items.length === 0 && (
-                        <p className="px-0.5 text-[10px] text-[#A8A29E]">—</p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </SurfaceCard>
-
-          <SurfaceCard className="flex flex-col overflow-hidden">
-            <div className="shrink-0 border-b border-[#EEF2F0] px-4 py-3">
-              <h3 className="text-sm font-bold text-[#1C1410]">Lista de entrevistas</h3>
-              <p className="text-[11px] text-[#78716c]">
-                {filtered.length} resultado{filtered.length === 1 ? "" : "s"} com os filtros atuais
+      <div className="grid items-stretch gap-4 xl:grid-cols-[1fr_320px] xl:grid-rows-[auto_240px]">
+        {/* Cima esquerda: calendário */}
+        <SurfaceCard className="overflow-hidden xl:col-start-1 xl:row-start-1">
+          <div className="flex flex-col gap-3 border-b border-[#EEF2F0] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <h3 className="text-sm font-bold text-[#1C1410]">Calendário da semana</h3>
+              <p className="mt-0.5 text-sm font-semibold capitalize text-[#E65100]">
+                {new Date().toLocaleDateString("pt-BR", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}
               </p>
+              <p className="text-[11px] text-[#78716c]">Semana {weekLabel}</p>
             </div>
-            <div className="max-h-[240px] overflow-y-auto overscroll-contain">
-              {filtered.length === 0 ? (
-                <p className="px-4 py-8 text-center text-sm text-[#78716c]">
-                  Nenhuma entrevista neste filtro.
-                </p>
-              ) : (
-                <ul className="divide-y divide-[#EEF2F0]">
-                  {filtered.map((item) => {
-                    const mod = MODALITY_META[item.modality] || MODALITY_META.PRESENCIAL;
-                    const st = STATUS_META[item.status] || STATUS_META.SCHEDULED;
-                    return (
-                      <li key={item.id} className="px-4 py-3">
-                        <div className="flex flex-col gap-2.5 lg:flex-row lg:items-start lg:justify-between">
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-sm font-bold text-[#1C1410]">{item.candidateName}</p>
-                              <StatusPill label={st.label} tone={st.tone} />
-                              <StatusPill label={mod.label} tone={mod.tone} />
-                            </div>
-                            <p className="mt-0.5 text-xs text-[#78716c]">{item.jobTitle}</p>
-                            <div className="mt-1.5 flex flex-wrap gap-3 text-[11px] text-[#57433C]">
-                              <span className="inline-flex items-center gap-1">
-                                <CalendarDays className="h-3.5 w-3.5 text-[#E65100]" />
-                                {new Date(item.scheduledAt).toLocaleString("pt-BR", {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </span>
-                              {item.interviewer && (
-                                <span className="inline-flex items-center gap-1">
-                                  <User className="h-3.5 w-3.5 text-[#E65100]" />
-                                  {item.interviewer}
-                                </span>
-                              )}
-                              {item.location && (
-                                <span className="inline-flex max-w-[220px] items-center gap-1 truncate">
-                                  {item.modality === "ONLINE" ? (
-                                    <Video className="h-3.5 w-3.5 shrink-0 text-[#E65100]" />
-                                  ) : (
-                                    <MapPin className="h-3.5 w-3.5 shrink-0 text-[#E65100]" />
-                                  )}
-                                  {item.location}
-                                </span>
-                              )}
-                            </div>
-                            {item.feedback && (
-                              <p className="mt-2 rounded-md bg-[#F4F5F7] px-2.5 py-1.5 text-[11px] text-[#57433C]">
-                                Feedback{item.rating ? ` (${item.rating}/5)` : ""}: {item.feedback}
-                              </p>
-                            )}
-                          </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setAnchor(startOfWeek(addDays(anchor, -7)))}
+                className="rounded-md border border-[#E6E8EB] bg-white p-2 text-[#1C1410] hover:bg-[#F4F5F7]"
+                aria-label="Semana anterior"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setAnchor(startOfWeek(new Date()))}
+                className="rounded-md border border-[#E6E8EB] bg-white px-3.5 py-2 text-xs font-bold text-[#1C1410] hover:bg-[#F4F5F7]"
+              >
+                Hoje
+              </button>
+              <button
+                type="button"
+                onClick={() => setAnchor(startOfWeek(addDays(anchor, 7)))}
+                className="rounded-md border border-[#E6E8EB] bg-white p-2 text-[#1C1410] hover:bg-[#F4F5F7]"
+                aria-label="Próxima semana"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
 
-                          <div className="flex flex-wrap gap-1.5 lg:justify-end">
-                            <Link
-                              href={`/empresa/candidatos?vaga=${item.jobId}&app=${item.applicationId}`}
-                              className="inline-flex items-center gap-1 rounded-md border border-[#E6E8EB] px-2.5 py-1.5 text-[11px] font-bold text-[#1C1410] hover:bg-[#F4F5F7]"
-                            >
-                              <ExternalLink className="h-3 w-3" />
-                              Candidato
-                            </Link>
-                            {item.status === "SCHEDULED" && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => setRescheduleId(item.id)}
-                                  className="inline-flex items-center gap-1 rounded-md border border-[#E6E8EB] px-2.5 py-1.5 text-[11px] font-bold text-[#1C1410] hover:bg-[#F4F5F7]"
-                                >
-                                  <RotateCcw className="h-3 w-3" />
-                                  Reagendar
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setFeedbackId(item.id)}
-                                  className="inline-flex items-center gap-1 rounded-md bg-[#E65100] px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-[#D84315]"
-                                >
-                                  <MessageSquare className="h-3 w-3" />
-                                  Avaliar
-                                </button>
-                                <form action={`/api/company/interviews/${item.id}`} method="POST">
-                                  <input type="hidden" name="action" value="status" />
-                                  <input type="hidden" name="status" value="NO_SHOW" />
-                                  <button className="rounded-md border border-amber-200 px-2.5 py-1.5 text-[11px] font-bold text-amber-800 hover:bg-amber-50">
-                                    Não compareceu
-                                  </button>
-                                </form>
-                                <form action={`/api/company/interviews/${item.id}`} method="POST">
-                                  <input type="hidden" name="action" value="status" />
-                                  <input type="hidden" name="status" value="CANCELLED" />
-                                  <button className="rounded-md border border-red-200 px-2.5 py-1.5 text-[11px] font-bold text-red-700 hover:bg-red-50">
-                                    Cancelar
-                                  </button>
-                                </form>
-                              </>
-                            )}
-                            {item.status !== "SCHEDULED" && !item.feedback && (
-                              <button
-                                type="button"
-                                onClick={() => setFeedbackId(item.id)}
-                                className="inline-flex items-center gap-1 rounded-md border border-[#E6E8EB] px-2.5 py-1.5 text-[11px] font-bold text-[#1C1410]"
-                              >
-                                <MessageSquare className="h-3 w-3" />
-                                Registrar feedback
-                              </button>
-                            )}
-                          </div>
+          <div className="grid grid-cols-1 divide-y divide-[#EEF2F0] sm:grid-cols-7 sm:divide-x sm:divide-y-0">
+            {weekDays.map((day, idx) => {
+              const items = byDay.get(day.toDateString()) || [];
+              const isToday = sameDay(day, new Date());
+              return (
+                <div
+                  key={day.toISOString()}
+                  className={`min-h-[140px] p-2 ${isToday ? "bg-[#FFF4EA]/50" : ""}`}
+                >
+                  <div className="mb-2 flex items-baseline justify-between gap-1">
+                    <span className="text-[11px] font-semibold text-[#78716c]">{DAY_LABELS[idx]}</span>
+                    <span
+                      className={`inline-flex h-6 min-w-6 items-center justify-center rounded-md px-1 text-xs font-black ${
+                        isToday ? "bg-[#E65100] text-white" : "text-[#1C1410]"
+                      }`}
+                      title={day.toLocaleDateString("pt-BR", {
+                        weekday: "long",
+                        day: "numeric",
+                        month: "long",
+                      })}
+                    >
+                      {day.getDate()}
+                    </span>
+                  </div>
+                  {isToday && (
+                    <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-[#E65100]">
+                      Hoje
+                    </p>
+                  )}
+                  <div className="space-y-1.5">
+                    {items.map((item) => {
+                      const mod = MODALITY_META[item.modality] || MODALITY_META.PRESENCIAL;
+                      return (
+                        <div
+                          key={item.id}
+                          className="rounded-md border border-[#E6E8EB] bg-white px-1.5 py-1.5"
+                        >
+                          <p className="text-[10px] font-bold text-[#E65100]">
+                            {new Date(item.scheduledAt).toLocaleTimeString("pt-BR", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                          <p className="truncate text-[11px] font-semibold text-[#1C1410]">
+                            {item.candidateName}
+                          </p>
+                          <p className="truncate text-[10px] text-[#78716c]">{mod.label}</p>
                         </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-          </SurfaceCard>
-        </div>
+                      );
+                    })}
+                    {items.length === 0 && (
+                      <p className="px-0.5 text-[10px] text-[#A8A29E]">—</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </SurfaceCard>
 
-        <aside className="space-y-4 xl:sticky xl:top-[4.5rem]">
+        {/* Cima direita: Próximas + Feedbacks */}
+        <div className="flex flex-col gap-4 xl:col-start-2 xl:row-start-1">
           <SurfaceCard className="p-4">
             <h3 className="mb-3 text-sm font-bold text-[#1C1410]">Próximas</h3>
             {upcoming.length === 0 ? (
@@ -551,31 +427,157 @@ export function InterviewsBoard({
               </ul>
             )}
           </SurfaceCard>
+        </div>
 
-          <SurfaceCard className="p-4">
-            <h3 className="mb-2 text-sm font-bold text-[#1C1410]">Resumo da semana</h3>
-            <ul className="space-y-1.5 text-xs text-[#57433C]">
-              <li className="flex justify-between">
-                <span>Agendadas</span>
-                <strong className="text-[#1C1410]">
-                  {weekItems.filter((i) => i.status === "SCHEDULED").length}
-                </strong>
-              </li>
-              <li className="flex justify-between">
-                <span>Online</span>
-                <strong className="text-[#1C1410]">
-                  {weekItems.filter((i) => i.modality === "ONLINE").length}
-                </strong>
-              </li>
-              <li className="flex justify-between">
-                <span>Presencial / híbrido</span>
-                <strong className="text-[#1C1410]">
-                  {weekItems.filter((i) => i.modality !== "ONLINE").length}
-                </strong>
-              </li>
-            </ul>
-          </SurfaceCard>
-        </aside>
+        {/* Baixo esquerda: lista (~2 visíveis + scroll), mesma altura do Resumo */}
+        <SurfaceCard className="flex h-[240px] min-h-[240px] flex-col overflow-hidden xl:col-start-1 xl:row-start-2 xl:h-full xl:min-h-0">
+          <div className="shrink-0 border-b border-[#EEF2F0] px-4 py-3">
+            <h3 className="text-sm font-bold text-[#1C1410]">Lista de entrevistas</h3>
+            <p className="text-[11px] text-[#78716c]">
+              {filtered.length} resultado{filtered.length === 1 ? "" : "s"} com os filtros atuais
+            </p>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            {filtered.length === 0 ? (
+              <p className="px-4 py-8 text-center text-sm text-[#78716c]">
+                Nenhuma entrevista neste filtro.
+              </p>
+            ) : (
+              <ul className="divide-y divide-[#EEF2F0]">
+                {filtered.map((item) => {
+                  const mod = MODALITY_META[item.modality] || MODALITY_META.PRESENCIAL;
+                  const st = STATUS_META[item.status] || STATUS_META.SCHEDULED;
+                  return (
+                    <li key={item.id} className="px-4 py-3">
+                      <div className="flex flex-col gap-2.5 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-bold text-[#1C1410]">{item.candidateName}</p>
+                            <StatusPill label={st.label} tone={st.tone} />
+                            <StatusPill label={mod.label} tone={mod.tone} />
+                          </div>
+                          <p className="mt-0.5 text-xs text-[#78716c]">{item.jobTitle}</p>
+                          <div className="mt-1.5 flex flex-wrap gap-3 text-[11px] text-[#57433C]">
+                            <span className="inline-flex items-center gap-1">
+                              <CalendarDays className="h-3.5 w-3.5 text-[#E65100]" />
+                              {new Date(item.scheduledAt).toLocaleString("pt-BR", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                            {item.interviewer && (
+                              <span className="inline-flex items-center gap-1">
+                                <User className="h-3.5 w-3.5 text-[#E65100]" />
+                                {item.interviewer}
+                              </span>
+                            )}
+                            {item.location && (
+                              <span className="inline-flex max-w-[220px] items-center gap-1 truncate">
+                                {item.modality === "ONLINE" ? (
+                                  <Video className="h-3.5 w-3.5 shrink-0 text-[#E65100]" />
+                                ) : (
+                                  <MapPin className="h-3.5 w-3.5 shrink-0 text-[#E65100]" />
+                                )}
+                                {item.location}
+                              </span>
+                            )}
+                          </div>
+                          {item.feedback && (
+                            <p className="mt-2 rounded-md bg-[#F4F5F7] px-2.5 py-1.5 text-[11px] text-[#57433C]">
+                              Feedback{item.rating ? ` (${item.rating}/5)` : ""}: {item.feedback}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap gap-1.5 lg:justify-end">
+                          <Link
+                            href={`/empresa/candidatos?vaga=${item.jobId}&app=${item.applicationId}`}
+                            className="inline-flex items-center gap-1 rounded-md border border-[#E6E8EB] px-2.5 py-1.5 text-[11px] font-bold text-[#1C1410] hover:bg-[#F4F5F7]"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            Candidato
+                          </Link>
+                          {item.status === "SCHEDULED" && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setRescheduleId(item.id)}
+                                className="inline-flex items-center gap-1 rounded-md border border-[#E6E8EB] px-2.5 py-1.5 text-[11px] font-bold text-[#1C1410] hover:bg-[#F4F5F7]"
+                              >
+                                <RotateCcw className="h-3 w-3" />
+                                Reagendar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setFeedbackId(item.id)}
+                                className="inline-flex items-center gap-1 rounded-md bg-[#E65100] px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-[#D84315]"
+                              >
+                                <MessageSquare className="h-3 w-3" />
+                                Avaliar
+                              </button>
+                              <form action={`/api/company/interviews/${item.id}`} method="POST">
+                                <input type="hidden" name="action" value="status" />
+                                <input type="hidden" name="status" value="NO_SHOW" />
+                                <button className="rounded-md border border-amber-200 px-2.5 py-1.5 text-[11px] font-bold text-amber-800 hover:bg-amber-50">
+                                  Não compareceu
+                                </button>
+                              </form>
+                              <form action={`/api/company/interviews/${item.id}`} method="POST">
+                                <input type="hidden" name="action" value="status" />
+                                <input type="hidden" name="status" value="CANCELLED" />
+                                <button className="rounded-md border border-red-200 px-2.5 py-1.5 text-[11px] font-bold text-red-700 hover:bg-red-50">
+                                  Cancelar
+                                </button>
+                              </form>
+                            </>
+                          )}
+                          {item.status !== "SCHEDULED" && !item.feedback && (
+                            <button
+                              type="button"
+                              onClick={() => setFeedbackId(item.id)}
+                              className="inline-flex items-center gap-1 rounded-md border border-[#E6E8EB] px-2.5 py-1.5 text-[11px] font-bold text-[#1C1410]"
+                            >
+                              <MessageSquare className="h-3 w-3" />
+                              Registrar feedback
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </SurfaceCard>
+
+        {/* Baixo direita: Resumo — mesma linha/base da lista */}
+        <SurfaceCard className="flex h-[240px] min-h-[240px] flex-col justify-center p-4 xl:col-start-2 xl:row-start-2 xl:h-full xl:min-h-0">
+          <h3 className="mb-3 text-sm font-bold text-[#1C1410]">Resumo da semana</h3>
+          <ul className="space-y-2 text-xs text-[#57433C]">
+            <li className="flex justify-between">
+              <span>Agendadas</span>
+              <strong className="text-[#1C1410]">
+                {weekItems.filter((i) => i.status === "SCHEDULED").length}
+              </strong>
+            </li>
+            <li className="flex justify-between">
+              <span>Online</span>
+              <strong className="text-[#1C1410]">
+                {weekItems.filter((i) => i.modality === "ONLINE").length}
+              </strong>
+            </li>
+            <li className="flex justify-between">
+              <span>Presencial / híbrido</span>
+              <strong className="text-[#1C1410]">
+                {weekItems.filter((i) => i.modality !== "ONLINE").length}
+              </strong>
+            </li>
+          </ul>
+        </SurfaceCard>
       </div>
 
       {/* Modal agendar */}
