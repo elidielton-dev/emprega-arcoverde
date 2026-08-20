@@ -1,236 +1,397 @@
 import React from "react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
-import { getSession } from "@/lib/auth/session";
 import {
   canManageCourses,
   canManageUsers,
   canPerformAssistedService,
   canViewIndicators,
   isAdmin,
+  isMunicipalOrSuperAdmin,
 } from "@/lib/auth/rbac";
+import { requireAdminContext } from "@/lib/admin/context";
 import {
-  ShieldCheck,
+  FunnelCard,
+  PageHeader,
+  PrimaryButton,
+  SecondaryButton,
+  StatusPill,
+  SurfaceCard,
+} from "@/components/admin/ui";
+import {
+  AlertTriangle,
+  ArrowRight,
   Briefcase,
-  Users,
   Building2,
   GraduationCap,
-  FileCheck,
-  TrendingUp,
-  ArrowRight,
-  AlertCircle,
-  BarChart3,
-  BookOpen,
-  UserCog,
-  ClipboardList,
+  Headset,
+  Shield,
+  Users,
 } from "lucide-react";
 
 export default async function AdminDashboardPage() {
-  const session = await getSession();
-  if (!session || (!isAdmin(session.role) && session.role !== "ASSISTED_OPERATOR")) {
-    redirect("/entrar");
-  }
+  const { session } = await requireAdminContext();
+  const municipal = isMunicipalOrSuperAdmin(session.role);
+  const admin = isAdmin(session.role);
+  const sala = session.role === "ASSISTED_OPERATOR";
+
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+
+  const weekStart = new Date();
+  weekStart.setDate(weekStart.getDate() - 7);
 
   const [
-    totalJobs,
     pendingJobsCount,
-    totalCompanies,
+    activeCompanies,
+    pendingCompanies,
     totalCandidates,
     assistedCandidatesCount,
-    totalApplications,
+    newCandidatesMonth,
+    pendingValidation,
+    assistedThisWeek,
     activeCoursesCount,
+    publishedJobs,
+    appsSubmitted,
+    appsReview,
+    appsInterview,
+    appsApproved,
+    pendingDeletions,
+    pendingJobs,
+    recentCompanies,
   ] = await Promise.all([
-    prisma.job.count(),
     prisma.job.count({ where: { status: "PENDING_REVIEW" } }),
-    prisma.company.count(),
+    prisma.company.count({ where: { status: "ACTIVE" } }),
+    prisma.company.count({ where: { status: "PENDING" } }),
     prisma.candidateProfile.count(),
     prisma.candidateProfile.count({ where: { isAssisted: true } }),
-    prisma.application.count(),
+    prisma.candidateProfile.count({ where: { createdAt: { gte: monthStart } } }),
+    prisma.candidateProfile.count({ where: { validationStatus: "PENDING" } }),
+    prisma.candidateProfile.count({
+      where: { isAssisted: true, createdAt: { gte: weekStart } },
+    }),
     prisma.course.count({ where: { status: "ACTIVE" } }),
+    prisma.job.count({ where: { status: "PUBLISHED" } }),
+    prisma.application.count({ where: { status: "SUBMITTED" } }),
+    prisma.application.count({ where: { status: "UNDER_REVIEW" } }),
+    prisma.application.count({
+      where: { status: { in: ["CONTACT_SELECTED", "INTERVIEW_SCHEDULED"] } },
+    }),
+    prisma.application.count({ where: { status: "APPROVED" } }),
+    prisma.deletionRequest.count({ where: { status: "PENDING" } }),
+    prisma.job.findMany({
+      where: { status: "PENDING_REVIEW" },
+      include: { company: true },
+      orderBy: { createdAt: "asc" },
+      take: 6,
+    }),
+    prisma.company.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      select: {
+        id: true,
+        name: true,
+        tradeName: true,
+        status: true,
+        createdByInstitution: true,
+        createdAt: true,
+      },
+    }),
   ]);
 
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-      {/* Cabeçalho */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#FEEDDF] shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-        <div className="space-y-1">
-          <span className="text-xs font-bold text-[#E65100] uppercase tracking-wider">
-            Gestão Municipal & ACA
-          </span>
-          <h1 className="text-2xl sm:text-3xl font-black text-[#2E221F] tracking-tight">
-            Painel de Governança
-          </h1>
-          <p className="text-xs text-[#78716c]">
-            Conectado como: <strong>{session.name}</strong> ({session.role})
-          </p>
-        </div>
+  const funnelTotal = appsSubmitted + appsReview + appsInterview + appsApproved || 1;
+  const advanceRate = Math.round(((appsInterview + appsApproved) / funnelTotal) * 1000) / 10;
 
-        {canPerformAssistedService(session.role) && (
-          <Link
-            href="/admin/atendimento-assistido"
-            className="bg-[#E65100] hover:bg-[#D84315] text-white font-bold text-xs px-5 py-3 rounded-xl shadow-md transition flex items-center gap-2"
-          >
-            <Users className="w-4 h-4" />
-            <span>Novo Atendimento Presencial</span>
-          </Link>
+  return (
+    <div className="space-y-5">
+      <PageHeader
+        title={municipal ? "Painel de governança" : sala ? "Painel da Sala" : "Visão geral"}
+        description={
+          municipal
+            ? "Dados agregados da intermediação municipal e alertas de governança."
+            : sala
+              ? "Atendimento presencial e acompanhamento de cadastros assistidos."
+              : "Operação institucional da ACA — moderação, empresas e candidatos."
+        }
+        actions={
+          <>
+            {canPerformAssistedService(session.role) && (
+              <PrimaryButton href="/admin/atendimento-assistido">
+                <Headset className="h-3.5 w-3.5" />
+                Novo atendimento
+              </PrimaryButton>
+            )}
+            {admin && (
+              <SecondaryButton href="/admin/vagas">
+                <Shield className="h-3.5 w-3.5" />
+                {municipal ? "Governança municipal" : "Operação ACA"}
+              </SecondaryButton>
+            )}
+          </>
+        }
+      />
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {admin && (
+          <FunnelCard
+            label="Vagas aguardando moderação"
+            count={pendingJobsCount}
+            hint="Fila institucional"
+            icon={<Briefcase className="h-4 w-4" />}
+          />
+        )}
+        <FunnelCard
+          label="Empresas ativas"
+          count={activeCompanies}
+          hint={pendingCompanies > 0 ? `${pendingCompanies} pendentes` : "Parceiras"}
+          icon={<Building2 className="h-4 w-4" />}
+        />
+        <FunnelCard
+          label="Candidatos cadastrados"
+          count={totalCandidates}
+          hint={`+${newCandidatesMonth} este mês`}
+          icon={<Users className="h-4 w-4" />}
+        />
+        {sala || canPerformAssistedService(session.role) ? (
+          <FunnelCard
+            label="Atendimentos esta semana"
+            count={assistedThisWeek}
+            hint={`${assistedCandidatesCount} assistidos no total`}
+            icon={<Headset className="h-4 w-4" />}
+          />
+        ) : (
+          <FunnelCard
+            label="Cursos ativos"
+            count={activeCoursesCount}
+            hint="Disponíveis"
+            icon={<GraduationCap className="h-4 w-4" />}
+          />
         )}
       </div>
 
-      {/* Alerta de Vagas Pendentes de Moderação */}
-      {pendingJobsCount > 0 && (
-        <div className="p-5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="w-6 h-6 text-amber-600 shrink-0" />
-            <div>
-              <h4 className="font-bold text-sm">
-                {pendingJobsCount} {pendingJobsCount === 1 ? "vaga aguardando moderação" : "vagas aguardando moderação"}
-              </h4>
-              <p className="text-xs text-amber-800">
-                Há vagas cadastradas pela equipe administrativa aguardando conclusão da moderação.
-              </p>
-            </div>
-          </div>
-          <Link
-            href="/admin/vagas"
-            className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition"
-          >
-            Moderar Vagas Agora
-          </Link>
+      {municipal && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <FunnelCard label="Vagas ativas" count={publishedJobs} hint="Publicadas" />
+          <FunnelCard label="Candidaturas (recebidas)" count={appsSubmitted} hint="SUBMITTED" />
+          <FunnelCard label="Cadastros assistidos" count={assistedCandidatesCount} hint="Presenciais" />
+          <FunnelCard label="Cursos ativos" count={activeCoursesCount} hint="Qualificação" />
+          <FunnelCard label="Empresas parceiras" count={activeCompanies} hint="Ativas" />
         </div>
       )}
 
-      {/* Grade de Indicadores Principais */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-[#FEEDDF] space-y-1">
-          <span className="text-xs text-[#78716c]">Total de Vagas</span>
-          <div className="text-2xl font-black text-[#2E221F]">{totalJobs}</div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-[#FEEDDF] space-y-1">
-          <span className="text-xs text-[#78716c]">Candidatos</span>
-          <div className="text-2xl font-black text-[#2E221F]">{totalCandidates}</div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-[#FEEDDF] space-y-1">
-          <span className="text-xs text-[#78716c]">Cadastros Assistidos</span>
-          <div className="text-2xl font-black text-[#E65100]">{assistedCandidatesCount}</div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-[#FEEDDF] space-y-1">
-          <span className="text-xs text-[#78716c]">Empresas</span>
-          <div className="text-2xl font-black text-[#2E221F]">{totalCompanies}</div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-[#FEEDDF] space-y-1">
-          <span className="text-xs text-[#78716c]">Candidaturas</span>
-          <div className="text-2xl font-black text-emerald-600">{totalApplications}</div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-[#FEEDDF] space-y-1">
-          <span className="text-xs text-[#78716c]">Cursos Ativos</span>
-          <div className="text-2xl font-black text-[#E65100]">{activeCoursesCount}</div>
-        </div>
-      </div>
-
-      {/* Módulos Administrativos */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Link
-          href="/admin/vagas"
-          className="bg-white p-6 rounded-3xl border border-[#FEEDDF] hover:border-[#E65100] hover:shadow-sm transition space-y-2 group"
-        >
-          <div className="flex items-center justify-between">
-            <Briefcase className="w-6 h-6 text-[#E65100]" />
-            <ArrowRight className="w-4 h-4 text-[#78716c] group-hover:translate-x-1 transition" />
-          </div>
-          <h3 className="font-bold text-base text-[#2E221F]">Moderação de Vagas</h3>
-          <p className="text-xs text-[#78716c]">
-            Aprovar, pausar, rejeitar ou publicar vagas diretamente em nome de empresas parceiras.
-          </p>
-        </Link>
-
-        {isAdmin(session.role) && (
-          <Link
-            href="/admin/vagas/nova"
-            className="bg-white p-6 rounded-3xl border border-[#FEEDDF] hover:border-[#E65100] hover:shadow-sm transition space-y-2 group"
-          >
-            <Briefcase className="w-6 h-6 text-[#E65100]" />
-            <h3 className="font-bold text-base text-[#2E221F]">Cadastrar vaga</h3>
-            <p className="text-xs text-[#78716c]">Registrar uma oportunidade em nome de uma empresa parceira.</p>
-          </Link>
+      {/* Alertas / fila */}
+      <div className={`grid gap-4 ${admin ? "xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]" : ""}`}>
+        {admin && (
+          <SurfaceCard className="overflow-hidden">
+            <div className="flex items-center justify-between border-b border-[#E6E8EB] px-4 py-3">
+              <h3 className="text-sm font-bold text-[#1C1410]">Fila de moderação</h3>
+              <Link href="/admin/vagas" className="text-xs font-bold text-[#E65100] hover:underline">
+                Ver todas
+              </Link>
+            </div>
+            {pendingJobs.length === 0 ? (
+              <p className="px-4 py-8 text-center text-xs text-[#78716c]">Nenhuma vaga pendente.</p>
+            ) : (
+              <ul className="divide-y divide-[#E6E8EB]">
+                {pendingJobs.map((job) => (
+                  <li key={job.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-[#1C1410]">{job.title}</p>
+                      <p className="truncate text-[11px] text-[#78716c]">
+                        {job.company.tradeName || job.company.name}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <StatusPill label="Pendente" tone="orange" />
+                      <Link
+                        href="/admin/vagas"
+                        className="rounded-md border border-[#E65100]/40 px-2.5 py-1 text-[11px] font-bold text-[#E65100] hover:bg-[#FFF4EA]"
+                      >
+                        Revisar
+                      </Link>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="border-t border-[#E6E8EB] px-4 py-2.5">
+              <Link href="/admin/vagas" className="text-[11px] font-bold text-[#E65100] hover:underline">
+                Ver fila completa →
+              </Link>
+            </div>
+          </SurfaceCard>
         )}
 
-        <Link
-          href="/admin/atendimento-assistido"
-          className="bg-white p-6 rounded-3xl border border-[#FEEDDF] hover:border-[#E65100] hover:shadow-sm transition space-y-2 group"
-        >
-          <div className="flex items-center justify-between">
-            <Users className="w-6 h-6 text-[#E65100]" />
-            <ArrowRight className="w-4 h-4 text-[#78716c] group-hover:translate-x-1 transition" />
-          </div>
-          <h3 className="font-bold text-base text-[#2E221F]">Atendimento Assistido</h3>
-          <p className="text-xs text-[#78716c]">
-            Cadastrar cidadãos presencialmente na Sala do Empreendedor e ACA com termo formal.
-          </p>
-        </Link>
-
-        <Link
-          href="/admin/candidatos"
-          className="bg-white p-6 rounded-3xl border border-[#FEEDDF] hover:border-[#E65100] hover:shadow-sm transition space-y-2 group"
-        >
-          <div className="flex items-center justify-between">
-            <FileCheck className="w-6 h-6 text-[#E65100]" />
-            <ArrowRight className="w-4 h-4 text-[#78716c] group-hover:translate-x-1 transition" />
-          </div>
-          <h3 className="font-bold text-base text-[#2E221F]">Banco de Talentos</h3>
-          <p className="text-xs text-[#78716c]">
-            Consultar perfis, escolaridade e currículos para triagem e encaminhamento na Feira.
-          </p>
-        </Link>
-
-        <Link
-          href="/admin/empresas"
-          className="bg-white p-6 rounded-3xl border border-[#FEEDDF] hover:border-[#E65100] hover:shadow-sm transition space-y-2 group"
-        >
-          <div className="flex items-center justify-between">
-            <Building2 className="w-6 h-6 text-[#E65100]" />
-            <ArrowRight className="w-4 h-4 text-[#78716c] group-hover:translate-x-1 transition" />
-          </div>
-          <h3 className="font-bold text-base text-[#2E221F]">Empresas Parceiras</h3>
-          <p className="text-xs text-[#78716c]">
-            Cadastrar empresas da ACA e da Prefeitura. A empresa não se cadastra sozinha.
-          </p>
-        </Link>
-
-        {canViewIndicators(session.role) && (
-          <Link href="/admin/indicadores" className="bg-white p-6 rounded-3xl border border-[#FEEDDF] hover:border-[#E65100] hover:shadow-sm transition space-y-2 group">
-            <BarChart3 className="w-6 h-6 text-[#E65100]" />
-            <h3 className="font-bold text-base text-[#2E221F]">Relatórios & Indicadores</h3>
-            <p className="text-xs text-[#78716c]">Dados consolidados de vagas, candidaturas, cursos e preenchimentos.</p>
-          </Link>
+        {admin && (
+          <SurfaceCard className="p-4">
+            <h3 className="text-sm font-bold text-[#1C1410]">Funil de candidaturas</h3>
+            <div className="mt-4 space-y-3">
+              {[
+                { label: "Recebidas", value: appsSubmitted },
+                { label: "Em triagem", value: appsReview },
+                { label: "Entrevistas", value: appsInterview },
+                { label: "Encaminhadas", value: appsApproved },
+              ].map((step) => (
+                <div key={step.label}>
+                  <div className="mb-1 flex justify-between text-[12px]">
+                    <span className="text-[#78716c]">{step.label}</span>
+                    <span className="font-bold text-[#1C1410]">{step.value}</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-[#F4F5F7]">
+                    <div
+                      className="h-full rounded-full bg-[#E65100]"
+                      style={{ width: `${Math.min(100, (step.value / funnelTotal) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="mt-4 text-[11px] text-[#78716c]">
+              Taxa de avanço geral: <strong className="text-[#1C1410]">{advanceRate}%</strong>
+            </p>
+          </SurfaceCard>
         )}
-        {canManageCourses(session.role) && (
-          <Link href="/admin/cursos" className="bg-white p-6 rounded-3xl border border-[#FEEDDF] hover:border-[#E65100] hover:shadow-sm transition space-y-2 group">
-            <BookOpen className="w-6 h-6 text-[#E65100]" />
-            <h3 className="font-bold text-base text-[#2E221F]">Cursos</h3>
-            <p className="text-xs text-[#78716c]">Cadastrar e acompanhar oportunidades de qualificação.</p>
-          </Link>
-        )}
-        {canManageUsers(session.role) && (
-          <Link href="/admin/usuarios" className="bg-white p-6 rounded-3xl border border-[#FEEDDF] hover:border-[#E65100] hover:shadow-sm transition space-y-2 group">
-            <UserCog className="w-6 h-6 text-[#E65100]" />
-            <h3 className="font-bold text-base text-[#2E221F]">Usuários</h3>
-            <p className="text-xs text-[#78716c]">Gerenciar operadores e administradores.</p>
-          </Link>
-        )}
-        {isAdmin(session.role) && (
-          <Link href="/admin/auditoria" className="bg-white p-6 rounded-3xl border border-[#FEEDDF] hover:border-[#E65100] hover:shadow-sm transition space-y-2 group">
-            <ClipboardList className="w-6 h-6 text-[#E65100]" />
-            <h3 className="font-bold text-base text-[#2E221F]">Auditoria</h3>
-            <p className="text-xs text-[#78716c]">Consultar ações administrativas recentes.</p>
-          </Link>
+
+        {sala && !admin && (
+          <SurfaceCard className="p-5 sm:col-span-2">
+            <h3 className="text-sm font-bold text-[#1C1410]">Ações do dia</h3>
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+              <PrimaryButton href="/admin/atendimento-assistido" className="w-full">
+                Novo atendimento
+              </PrimaryButton>
+              <SecondaryButton href="/admin/candidatos" className="w-full">
+                Banco de candidatos
+              </SecondaryButton>
+              <SecondaryButton href="/admin/empresas/nova" className="w-full">
+                Cadastrar empresa
+              </SecondaryButton>
+            </div>
+          </SurfaceCard>
         )}
       </div>
+
+      {/* Linha inferior */}
+      <div className={`grid gap-4 ${admin ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}>
+        {admin && (
+          <SurfaceCard className="overflow-hidden lg:col-span-1">
+            <div className="border-b border-[#E6E8EB] px-4 py-3">
+              <h3 className="text-sm font-bold text-[#1C1410]">Empresas parceiras recentes</h3>
+            </div>
+            <ul className="divide-y divide-[#E6E8EB]">
+              {recentCompanies.map((c) => (
+                <li key={c.id} className="flex items-center justify-between gap-2 px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-[#1C1410]">
+                      {c.tradeName || c.name}
+                    </p>
+                    <p className="text-[11px] text-[#78716c]">
+                      {c.createdByInstitution || "—"} ·{" "}
+                      {new Date(c.createdAt).toLocaleDateString("pt-BR")}
+                    </p>
+                  </div>
+                  <StatusPill
+                    label={c.status === "ACTIVE" ? "Ativa" : c.status}
+                    tone={c.status === "ACTIVE" ? "success" : "warn"}
+                  />
+                </li>
+              ))}
+            </ul>
+          </SurfaceCard>
+        )}
+
+        {admin && (
+          <SurfaceCard className="p-4">
+            <h3 className="text-sm font-bold text-[#1C1410]">Ações rápidas</h3>
+            <div className="mt-3 space-y-2">
+              <PrimaryButton href="/admin/empresas/nova" className="w-full">
+                <Building2 className="h-3.5 w-3.5" />
+                Cadastrar empresa
+              </PrimaryButton>
+              <SecondaryButton href="/admin/vagas" className="w-full">
+                Moderar vagas
+              </SecondaryButton>
+              {canPerformAssistedService(session.role) && (
+                <SecondaryButton href="/admin/atendimento-assistido" className="w-full">
+                  Novo atendimento
+                </SecondaryButton>
+              )}
+            </div>
+          </SurfaceCard>
+        )}
+
+        <SurfaceCard className="border-amber-200 bg-amber-50/80 p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+            <div>
+              <h3 className="text-sm font-bold text-amber-950">Alertas</h3>
+              <ul className="mt-2 space-y-1.5 text-xs text-amber-900">
+                {admin && pendingJobsCount > 0 && (
+                  <li>
+                    {pendingJobsCount} vaga(s) aguardando moderação
+                  </li>
+                )}
+                {pendingValidation > 0 && (
+                  <li>{pendingValidation} currículo(s) aguardando validação</li>
+                )}
+                {municipal && pendingDeletions > 0 && (
+                  <li>{pendingDeletions} solicitação(ões) LGPD pendentes</li>
+                )}
+                {pendingJobsCount === 0 && pendingValidation === 0 && pendingDeletions === 0 && (
+                  <li>Nenhum alerta crítico no momento.</li>
+                )}
+              </ul>
+              {municipal && (
+                <Link
+                  href="/admin/auditoria"
+                  className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-[#E65100] hover:underline"
+                >
+                  Acessar solicitações <ArrowRight className="h-3 w-3" />
+                </Link>
+              )}
+            </div>
+          </div>
+        </SurfaceCard>
+      </div>
+
+      {municipal && (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            canViewIndicators(session.role) && {
+              href: "/admin/indicadores",
+              label: "Indicadores",
+              desc: "Relatórios agregados",
+            },
+            canManageUsers(session.role) && {
+              href: "/admin/usuarios",
+              label: "Usuários",
+              desc: "Permissões e acessos",
+            },
+            { href: "/admin/auditoria", label: "Privacidade", desc: "LGPD e auditoria" },
+            canManageCourses(session.role) && {
+              href: "/admin/cursos",
+              label: "Cursos",
+              desc: "Qualificação",
+            },
+          ]
+            .filter(Boolean)
+            .map((item) => {
+              const link = item as { href: string; label: string; desc: string };
+              return (
+                <Link key={link.href} href={link.href}>
+                  <SurfaceCard className="h-full p-4 transition hover:border-[#E65100]/40">
+                    <p className="text-sm font-bold text-[#1C1410]">{link.label}</p>
+                    <p className="mt-1 text-[11px] text-[#78716c]">{link.desc}</p>
+                    <span className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-[#E65100]">
+                      Acessar <ArrowRight className="h-3 w-3" />
+                    </span>
+                  </SurfaceCard>
+                </Link>
+              );
+            })}
+        </div>
+      )}
     </div>
   );
 }

@@ -9,9 +9,9 @@ type User = { name: string; email: string; role: string } | null;
 
 export function PublicChrome({ user, children }: { user: User; children: React.ReactNode }) {
   const pathname = usePathname() || "";
-  const isCompanyApp = pathname.startsWith("/empresa");
+  const isAppShell = pathname.startsWith("/empresa") || pathname.startsWith("/admin");
 
-  if (isCompanyApp) {
+  if (isAppShell) {
     return <>{children}</>;
   }
 
