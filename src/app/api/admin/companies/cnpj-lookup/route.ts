@@ -3,40 +3,135 @@ import { getSession } from "@/lib/auth/session";
 import { canRegisterCompany } from "@/lib/auth/rbac";
 import { formatCnpj, isValidCnpj, normalizeCnpj } from "@/lib/company/cnpj";
 
-type BrasilApiCnpj = {
-  razao_social?: string;
-  nome_fantasia?: string;
-  email?: string | null;
-  ddd_telefone_1?: string | null;
-  descricao_tipo_de_logradouro?: string | null;
-  logradouro?: string | null;
-  numero?: string | null;
-  complemento?: string | null;
-  bairro?: string | null;
-  cep?: string | null;
-  municipio?: string | null;
-  uf?: string | null;
-  cnae_fiscal_descricao?: string | null;
+export type CnpjLookupData = {
+  cnpj: string;
+  name: string;
+  tradeName: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  sector: string;
 };
 
-function buildAddress(data: BrasilApiCnpj) {
+function formatPhone(raw?: string | null) {
+  const digits = (raw || "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.length === 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  if (digits.length === 11) return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  return digits;
+}
+
+function formatCep(raw?: string | null) {
+  const digits = String(raw || "").replace(/\D/g, "");
+  if (digits.length !== 8) return digits || "";
+  return digits.replace(/^(\d{5})(\d{3})$/, "$1-$2");
+}
+
+async function fromBrasilApi(cnpj: string): Promise<CnpjLookupData | null> {
+  const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {
+    headers: { Accept: "application/json" },
+    cache: "no-store",
+  });
+  if (response.status === 404) return null;
+  if (response.status === 429) throw Object.assign(new Error("rate_limit"), { code: "RATE_LIMIT" });
+  if (!response.ok) throw new Error(`brasilapi_${response.status}`);
+
+  const data = await response.json();
   const street = [data.descricao_tipo_de_logradouro, data.logradouro].filter(Boolean).join(" ").trim();
-  const parts = [
+  const address = [
     street || null,
     data.numero ? `nº ${data.numero}` : null,
     data.complemento || null,
     data.bairro || null,
-    data.cep ? `CEP ${String(data.cep).replace(/\D/g, "").replace(/^(\d{5})(\d{3})$/, "$1-$2")}` : null,
-  ].filter(Boolean);
-  return parts.join(", ") || null;
+    data.cep ? `CEP ${formatCep(data.cep)}` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  return {
+    cnpj: formatCnpj(cnpj),
+    name: data.razao_social || "",
+    tradeName: data.nome_fantasia || "",
+    email: data.email || "",
+    phone: formatPhone(data.ddd_telefone_1),
+    address,
+    city: data.municipio || "",
+    state: data.uf || "",
+    sector: data.cnae_fiscal_descricao || "",
+  };
 }
 
-function buildPhone(data: BrasilApiCnpj) {
-  const raw = (data.ddd_telefone_1 || "").replace(/\D/g, "");
-  if (!raw) return null;
-  if (raw.length === 10) return `(${raw.slice(0, 2)}) ${raw.slice(2, 6)}-${raw.slice(6)}`;
-  if (raw.length === 11) return `(${raw.slice(0, 2)}) ${raw.slice(2, 7)}-${raw.slice(7)}`;
-  return raw;
+async function fromOpenCnpja(cnpj: string): Promise<CnpjLookupData | null> {
+  const response = await fetch(`https://open.cnpja.com/office/${cnpj}`, {
+    headers: { Accept: "application/json" },
+    cache: "no-store",
+  });
+  if (response.status === 404) return null;
+  if (response.status === 429) throw Object.assign(new Error("rate_limit"), { code: "RATE_LIMIT" });
+  if (!response.ok) throw new Error(`cnpja_${response.status}`);
+
+  const data = await response.json();
+  const addr = data.address || {};
+  const street = [addr.street, addr.number ? `nº ${addr.number}` : null, addr.details, addr.district]
+    .filter(Boolean)
+    .join(", ");
+  const phones = Array.isArray(data.phones) ? data.phones : [];
+  const phoneRaw = phones[0] ? `${phones[0].area || ""}${phones[0].number || ""}` : "";
+  const emails = Array.isArray(data.emails) ? data.emails : [];
+  const activity = data.mainActivity?.text || data.mainActivity?.text || "";
+
+  return {
+    cnpj: formatCnpj(cnpj),
+    name: data.company?.name || "",
+    tradeName: data.alias || "",
+    email: emails[0]?.address || "",
+    phone: formatPhone(phoneRaw),
+    address: [street, addr.zip ? `CEP ${formatCep(addr.zip)}` : null].filter(Boolean).join(", "),
+    city: addr.city || "",
+    state: addr.state || "",
+    sector: activity,
+  };
+}
+
+async function fromPublicaCnpjWs(cnpj: string): Promise<CnpjLookupData | null> {
+  const response = await fetch(`https://publica.cnpj.ws/cnpj/${cnpj}`, {
+    headers: { Accept: "application/json" },
+    cache: "no-store",
+  });
+  if (response.status === 404) return null;
+  if (response.status === 429) throw Object.assign(new Error("rate_limit"), { code: "RATE_LIMIT" });
+  if (!response.ok) throw new Error(`cnpjws_${response.status}`);
+
+  const data = await response.json();
+  const estabelecimento = data.estabelecimento || {};
+  const street = [
+    estabelecimento.tipo_logradouro,
+    estabelecimento.logradouro,
+    estabelecimento.numero ? `nº ${estabelecimento.numero}` : null,
+    estabelecimento.complemento,
+    estabelecimento.bairro,
+    estabelecimento.cep ? `CEP ${formatCep(estabelecimento.cep)}` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  const ddd = estabelecimento.ddd1 || "";
+  const tel = estabelecimento.telefone1 || "";
+  const activity = estabelecimento.atividade_principal?.descricao || "";
+
+  return {
+    cnpj: formatCnpj(cnpj),
+    name: data.razao_social || "",
+    tradeName: estabelecimento.nome_fantasia || "",
+    email: estabelecimento.email || "",
+    phone: formatPhone(`${ddd}${tel}`),
+    address: street,
+    city: estabelecimento.cidade?.nome || estabelecimento.municipio?.nome || "",
+    state: estabelecimento.estado?.sigla || "",
+    sector: activity,
+  };
 }
 
 export async function GET(req: NextRequest) {
@@ -50,40 +145,31 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "CNPJ inválido. Informe 14 dígitos." }, { status: 400 });
   }
 
-  try {
-    const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {
-      headers: { Accept: "application/json" },
-      next: { revalidate: 86400 },
-    });
+  const providers = [fromBrasilApi, fromOpenCnpja, fromPublicaCnpjWs];
+  let rateLimited = false;
 
-    if (response.status === 404) {
-      return NextResponse.json({ error: "CNPJ não encontrado na Receita Federal." }, { status: 404 });
+  for (const provider of providers) {
+    try {
+      const result = await provider(cnpj);
+      if (result && result.name) {
+        return NextResponse.json(result);
+      }
+      if (result === null) {
+        return NextResponse.json({ error: "CNPJ não encontrado na Receita Federal." }, { status: 404 });
+      }
+    } catch (error: unknown) {
+      const code = (error as { code?: string })?.code;
+      if (code === "RATE_LIMIT") rateLimited = true;
+      console.warn("CNPJ provider falhou:", (error as Error)?.message || error);
     }
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: "Não foi possível consultar o CNPJ agora. Tente de novo ou preencha manualmente." },
-        { status: 502 },
-      );
-    }
-
-    const data = (await response.json()) as BrasilApiCnpj;
-
-    return NextResponse.json({
-      cnpj: formatCnpj(cnpj),
-      name: data.razao_social || "",
-      tradeName: data.nome_fantasia || "",
-      email: data.email || "",
-      phone: buildPhone(data) || "",
-      address: buildAddress(data) || "",
-      city: data.municipio || "",
-      state: data.uf || "",
-      sector: data.cnae_fiscal_descricao || "",
-    });
-  } catch (error) {
-    console.error("Erro na consulta de CNPJ:", error);
-    return NextResponse.json(
-      { error: "Falha na consulta do CNPJ. Preencha os dados manualmente." },
-      { status: 502 },
-    );
   }
+
+  return NextResponse.json(
+    {
+      error: rateLimited
+        ? "Consulta temporariamente limitada. Aguarde alguns segundos e tente Buscar de novo."
+        : "Não foi possível consultar o CNPJ agora. Tente de novo ou preencha manualmente.",
+    },
+    { status: 502 },
+  );
 }

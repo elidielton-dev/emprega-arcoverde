@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Loader2, Search } from "lucide-react";
 import { formatCnpj, normalizeCnpj } from "@/lib/company/cnpj";
 
@@ -31,14 +31,17 @@ export function CompanyRegisterForm({ needsInstitution }: { needsInstitution: bo
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [messageType, setMessageType] = useState<"ok" | "err">("ok");
+  const lastLookupRef = useRef<string>("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  async function lookupCnpj(raw: string) {
+  async function lookupCnpj(raw: string, force = false) {
     const digits = normalizeCnpj(raw);
     if (digits.length !== 14) {
       setMessageType("err");
       setMessage("Digite os 14 dígitos do CNPJ para buscar.");
       return;
     }
+    if (!force && lastLookupRef.current === digits) return;
 
     setLoading(true);
     setMessage(null);
@@ -51,6 +54,7 @@ export function CompanyRegisterForm({ needsInstitution }: { needsInstitution: bo
         return;
       }
 
+      lastLookupRef.current = digits;
       const result = data as LookupResult;
       setCnpj(result.cnpj || formatCnpj(digits));
       if (result.name) setName(result.name);
@@ -72,20 +76,21 @@ export function CompanyRegisterForm({ needsInstitution }: { needsInstitution: bo
     }
   }
 
+  function scheduleLookup(digits: string) {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      void lookupCnpj(digits);
+    }, 500);
+  }
+
   function onCnpjChange(value: string) {
     const digits = normalizeCnpj(value).slice(0, 14);
     const next = digits.length === 14 ? formatCnpj(digits) : digits;
     setCnpj(next);
     if (digits.length === 14) {
-      void lookupCnpj(digits);
-    }
-  }
-
-  function onCnpjBlur() {
-    const digits = normalizeCnpj(cnpj);
-    if (digits.length === 14) {
-      setCnpj(formatCnpj(digits));
-      void lookupCnpj(digits);
+      scheduleLookup(digits);
+    } else {
+      lastLookupRef.current = "";
     }
   }
 
@@ -99,7 +104,6 @@ export function CompanyRegisterForm({ needsInstitution }: { needsInstitution: bo
             required
             value={cnpj}
             onChange={(e) => onCnpjChange(e.target.value)}
-            onBlur={onCnpjBlur}
             placeholder="00.000.000/0001-00"
             inputMode="numeric"
             autoComplete="off"
@@ -107,7 +111,7 @@ export function CompanyRegisterForm({ needsInstitution }: { needsInstitution: bo
           />
           <button
             type="button"
-            onClick={() => void lookupCnpj(cnpj)}
+            onClick={() => void lookupCnpj(cnpj, true)}
             disabled={loading || normalizeCnpj(cnpj).length !== 14}
             className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1C1410] hover:bg-black disabled:opacity-50 text-white text-xs font-bold"
           >
