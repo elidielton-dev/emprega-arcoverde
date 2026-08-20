@@ -37,5 +37,17 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     details: { status, notes },
   });
 
+  const { notifyUser } = await import("@/lib/notifications/notify");
+  await notifyUser({
+    userId: profile.userId,
+    title: status === "VALIDATED" ? "Currículo validado" : "Currículo precisa de ajustes",
+    message:
+      status === "VALIDATED"
+        ? "Seu currículo foi validado pela equipe institucional."
+        : `Seu currículo foi marcado para revisão.${notes ? ` ${notes}` : ""}`,
+    type: "SYSTEM",
+    link: "/painel/curriculo",
+  });
+
   return formRedirect(new URL("/admin/candidatos?sucesso=validacao_atualizada", req.url));
 }

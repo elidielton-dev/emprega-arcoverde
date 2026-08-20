@@ -3,8 +3,7 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { requireAdminContext } from "@/lib/admin/context";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { session, orgLabel, orgHint, roleLabel, navItems, canSearchCandidates } =
-    await requireAdminContext();
+  const { session, orgLabel, orgHint, roleLabel, navItems } = await requireAdminContext();
 
   return (
     <AdminShell
@@ -13,7 +12,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       userName={session.name || session.email}
       userRoleLabel={roleLabel}
       navItems={navItems}
-      canSearchCandidates={canSearchCandidates}
     >
       {children}
     </AdminShell>

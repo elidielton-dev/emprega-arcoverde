@@ -25,7 +25,6 @@ export type AdminContext = {
   orgHint: string;
   roleLabel: string;
   navItems: AdminNavItem[];
-  canSearchCandidates: boolean;
 };
 
 function orgFromRole(role: string): { orgLabel: string; orgHint: string } {
@@ -99,6 +98,5 @@ export async function requireAdminContext(): Promise<AdminContext> {
     orgHint,
     roleLabel,
     navItems: buildAdminNav(session.role),
-    canSearchCandidates: canViewAllCandidates(session.role),
   };
 }

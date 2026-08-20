@@ -91,6 +91,16 @@ export async function POST(req: NextRequest) {
       details: { title, isConfidential, status, companyId: targetCompanyId },
     });
 
+    if (status === "PUBLISHED") {
+      const { notifyCompanyMembers } = await import("@/lib/notifications/notify");
+      await notifyCompanyMembers(targetCompanyId, {
+        title: "Vaga publicada",
+        message: `A vaga "${title}" foi publicada no portal.`,
+        type: "JOB_ALERT",
+        link: "/empresa/vagas",
+      });
+    }
+
     return formRedirect(new URL(`/admin/vagas?sucesso=vaga_criada`, req.url));
   } catch (error) {
     console.error("Erro ao criar vaga:", error);

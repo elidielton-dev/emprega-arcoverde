@@ -208,6 +208,20 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const { notifyAdmins, notifyUsersByRoles } = await import("@/lib/notifications/notify");
+    await notifyAdmins({
+      title: "Currículo assistido pendente",
+      message: `${fullName} foi cadastrado(a) via atendimento e aguarda validação.`,
+      type: "SYSTEM",
+      link: "/admin/candidatos",
+    });
+    await notifyUsersByRoles(["ASSISTED_OPERATOR"], {
+      title: "Novo cadastro assistido",
+      message: `${fullName} entrou no banco de candidatos (${assistedUnit}).`,
+      type: "SYSTEM",
+      link: "/admin/candidatos",
+    });
+
     const dest = new URL("/admin/atendimento-assistido", req.url);
     dest.searchParams.set("sucesso", "cadastro_concluido");
     dest.searchParams.set("nome", fullName);

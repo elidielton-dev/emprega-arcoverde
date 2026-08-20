@@ -10,7 +10,7 @@ import {
   ShieldAlert,
   Users,
 } from "lucide-react";
-import { PageHeader, SurfaceCard } from "@/components/company/ui";
+import { PageHeader, SecondaryButton, SurfaceCard } from "@/components/company/ui";
 
 export type CompanySettingsData = {
   name: string;
@@ -239,24 +239,11 @@ export function SettingsBoard({ company, sucesso, erro }: Props) {
             <div className="space-y-3">
               <h3 className="text-sm font-bold text-[#1C1410]">Notificações</h3>
               <p className="text-sm text-[#78716c]">
-                Preferências de e-mail e alertas de novas candidaturas chegarão em uma próxima
-                versão.
+                Acompanhe novas candidaturas e avisos de moderação pelo sino no topo do painel.
               </p>
-              <div className="space-y-2 opacity-60">
-                {[
-                  "Nova candidatura em vaga publicada",
-                  "Lembrete de entrevista no dia",
-                  "Resumo semanal do funil",
-                ].map((label) => (
-                  <label
-                    key={label}
-                    className="flex cursor-not-allowed items-center gap-2 rounded-md border border-[#EEF2F0] px-3 py-2.5 text-xs font-semibold text-[#57433C]"
-                  >
-                    <input type="checkbox" disabled className="rounded" />
-                    {label}
-                  </label>
-                ))}
-              </div>
+              <SecondaryButton href="/empresa/notificacoes" className="w-full sm:w-auto">
+                Abrir caixa de notificações
+              </SecondaryButton>
             </div>
           )}
         </SurfaceCard>

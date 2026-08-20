@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BrandLogo } from "../ui/BrandLogo";
 import { LogOut, Menu, X, LogIn } from "lucide-react";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 interface NavbarProps {
   user?: {
@@ -68,6 +69,16 @@ export function Navbar({ user }: NavbarProps) {
           <div className="hidden sm:flex items-center gap-2 shrink-0">
             {user ? (
               <>
+                <NotificationBell
+                  inboxHref={
+                    user.role === "CANDIDATE"
+                      ? "/painel/notificacoes"
+                      : user.role === "COMPANY_MEMBER"
+                        ? "/empresa/notificacoes"
+                        : "/admin/notificacoes"
+                  }
+                  variant="navbar"
+                />
                 <Link
                   href={getDashboardUrl()}
                   className="bg-[#1C1410] hover:bg-black text-white text-sm font-bold px-5 py-2.5 rounded-full"
@@ -130,6 +141,19 @@ export function Navbar({ user }: NavbarProps) {
           <div className="pt-3 border-t border-[#E6E8EB] flex flex-col gap-2">
             {user ? (
               <>
+                <Link
+                  href={
+                    user.role === "CANDIDATE"
+                      ? "/painel/notificacoes"
+                      : user.role === "COMPANY_MEMBER"
+                        ? "/empresa/notificacoes"
+                        : "/admin/notificacoes"
+                  }
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full text-center border border-[#E6E8EB] text-[#1C1410] font-semibold py-3 rounded-full"
+                >
+                  Notificações
+                </Link>
                 <Link
                   href={getDashboardUrl()}
                   onClick={() => setMobileMenuOpen(false)}

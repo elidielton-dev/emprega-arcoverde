@@ -253,13 +253,10 @@ export default async function AdminDashboardPage() {
         {sala && !admin && (
           <SurfaceCard className="p-5 sm:col-span-2">
             <h3 className="text-sm font-bold text-[#1C1410]">Ações do dia</h3>
-            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
               <PrimaryButton href="/admin/atendimento-assistido" className="w-full">
                 Novo atendimento
               </PrimaryButton>
-              <SecondaryButton href="/admin/candidatos" className="w-full">
-                Banco de candidatos
-              </SecondaryButton>
               <SecondaryButton href="/admin/empresas/nova" className="w-full">
                 Cadastrar empresa
               </SecondaryButton>
@@ -307,9 +304,6 @@ export default async function AdminDashboardPage() {
               </PrimaryButton>
               <SecondaryButton href="/admin/vagas" className="w-full">
                 Moderar vagas
-              </SecondaryButton>
-              <SecondaryButton href="/admin/candidatos" className="w-full">
-                Banco de candidatos
               </SecondaryButton>
             </div>
           </SurfaceCard>

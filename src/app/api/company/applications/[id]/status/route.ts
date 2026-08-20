@@ -108,6 +108,24 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       details: { newStatus, notes, scheduledAt: scheduledAt?.toISOString(), location },
     });
 
+    const {
+      notifyUser,
+      APPLICATION_STATUS_LABELS,
+    } = await import("@/lib/notifications/notify");
+    const statusLabel = APPLICATION_STATUS_LABELS[newStatus] || newStatus;
+    await notifyUser({
+      userId: application.candidate.userId,
+      title: `Atualização: ${application.job.title}`,
+      message:
+        newStatus === "INTERVIEW_SCHEDULED" && scheduledAt
+          ? `Entrevista agendada para ${scheduledAt.toLocaleString("pt-BR")}${
+              location ? ` — ${location}` : ""
+            }.`
+          : `Status da candidatura: ${statusLabel}.${notes ? ` ${notes}` : ""}`,
+      type: "APPLICATION_UPDATE",
+      link: `/painel/candidaturas/${applicationId}`,
+    });
+
     if (newStatus === "INTERVIEW_SCHEDULED" && scheduledAt) {
       await sendEmail({
         to: application.candidate.user.email,

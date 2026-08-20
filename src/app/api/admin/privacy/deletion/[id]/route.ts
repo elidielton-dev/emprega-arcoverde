@@ -46,5 +46,20 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     details: { subjectUserId: request.userId, notes },
   });
 
+  const { notifyUser } = await import("@/lib/notifications/notify");
+  await notifyUser({
+    userId: request.userId,
+    title:
+      action === "PROCESS"
+        ? "Solicitação LGPD processada"
+        : "Solicitação LGPD não atendida",
+    message:
+      action === "PROCESS"
+        ? "Sua solicitação de exclusão de dados foi processada."
+        : `Sua solicitação de exclusão não foi processada.${notes ? ` ${notes}` : ""}`,
+    type: "SYSTEM",
+    link: "/painel/privacidade",
+  });
+
   return formRedirect(new URL("/admin/auditoria?sucesso=solicitacao_processada", req.url));
 }

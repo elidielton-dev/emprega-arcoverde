@@ -11,14 +11,13 @@ import {
   Library,
   BarChart3,
   Settings,
-  Search,
-  Bell,
   Menu,
   X,
   LogOut,
   ChevronDown,
 } from "lucide-react";
 import { BrandLogo } from "@/components/ui/BrandLogo";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 const NAV = [
   { href: "/empresa", label: "Visão geral", icon: LayoutDashboard, exact: true },
@@ -182,19 +181,7 @@ export function CompanyShell({
           </div>
 
           <div className="flex items-center gap-2">
-            <Link
-              href="/empresa/candidatos"
-              className="hidden items-center gap-2 rounded-md border border-[#E6E8EB] bg-[#F4F5F7] px-3 py-2 text-xs text-[#78716c] hover:border-[#E65100]/35 sm:flex"
-            >
-              <Search className="h-3.5 w-3.5" />
-              Buscar candidatos
-            </Link>
-            <span className="relative rounded-md border border-[#E6E8EB] p-2 text-[#78716c]">
-              <Bell className="h-4 w-4" />
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1C1410] text-[11px] font-bold text-white">
-              {initials || "E"}
-            </div>
+            <NotificationBell inboxHref="/empresa/notificacoes" />
           </div>
         </header>
 

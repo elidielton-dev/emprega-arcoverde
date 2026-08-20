@@ -28,6 +28,14 @@ export async function POST(req: NextRequest) {
         resourceType: "User",
         resourceId: session.userId,
       });
+
+      const { notifyMunicipalAdmins } = await import("@/lib/notifications/notify");
+      await notifyMunicipalAdmins({
+        title: "Solicitação LGPD",
+        message: "Um titular solicitou exclusão de dados pessoais.",
+        type: "SYSTEM",
+        link: "/admin/auditoria",
+      });
     }
 
     return formRedirect(new URL("/painel/privacidade?sucesso=solicitacao_registrada", req.url));

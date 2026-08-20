@@ -13,13 +13,13 @@ import {
   BarChart3,
   UserCog,
   ClipboardList,
-  Search,
   Menu,
   X,
   LogOut,
   type LucideIcon,
 } from "lucide-react";
 import { BrandLogo } from "@/components/ui/BrandLogo";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import type { AdminNavItem } from "@/lib/admin/context";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -64,7 +64,6 @@ export type AdminShellProps = {
   userName: string;
   userRoleLabel: string;
   navItems: AdminNavItem[];
-  canSearchCandidates?: boolean;
   children: React.ReactNode;
 };
 
@@ -74,7 +73,6 @@ export function AdminShell({
   userName,
   userRoleLabel,
   navItems,
-  canSearchCandidates = true,
   children,
 }: AdminShellProps) {
   const pathname = usePathname() || "/admin";
@@ -217,18 +215,7 @@ export function AdminShell({
           </div>
 
           <div className="flex items-center gap-2">
-            {canSearchCandidates && (
-              <Link
-                href="/admin/candidatos"
-                className="hidden items-center gap-2 rounded-md border border-[#E6E8EB] bg-[#F4F5F7] px-3 py-2 text-xs text-[#78716c] hover:border-[#E65100]/35 sm:flex"
-              >
-                <Search className="h-3.5 w-3.5" />
-                Buscar candidatos
-              </Link>
-            )}
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1C1410] text-[11px] font-bold text-white">
-              {initials || "A"}
-            </div>
+            <NotificationBell inboxHref="/admin/notificacoes" />
           </div>
         </header>
 

@@ -113,6 +113,21 @@ export async function POST(req: NextRequest) {
       details: { jobId: job.id, matchScore: matchResult.score, band: matchResult.band },
     });
 
+    const { notifyCompanyMembers, notifyUser } = await import("@/lib/notifications/notify");
+    await notifyUser({
+      userId: session.userId,
+      title: "Candidatura enviada",
+      message: `Sua candidatura para ${job.title} foi registrada com sucesso.`,
+      type: "APPLICATION_UPDATE",
+      link: `/painel/candidaturas/${application.id}`,
+    });
+    await notifyCompanyMembers(job.companyId, {
+      title: "Nova candidatura",
+      message: `${candidateProfile.fullName} candidatou-se à vaga ${job.title}.`,
+      type: "APPLICATION_UPDATE",
+      link: `/empresa/candidatos?vaga=${job.id}&app=${application.id}`,
+    });
+
     if (candidateProfile.emailConsent) {
       const emailHtml = generateApplicationConfirmationEmail(
         job.title,

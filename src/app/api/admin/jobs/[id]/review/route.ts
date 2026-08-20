@@ -69,6 +69,28 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       details: { action, newStatus, notes, selectionResult, filledVacanciesCount },
     });
 
+    const job = await prisma.job.findUnique({
+      where: { id: jobId },
+      select: { title: true, companyId: true },
+    });
+    if (job && ["APPROVE", "PUBLISH", "REOPEN", "REJECT", "PAUSE", "CLOSE"].includes(action)) {
+      const { notifyCompanyMembers } = await import("@/lib/notifications/notify");
+      const messages: Record<string, string> = {
+        APPROVE: `A vaga "${job.title}" foi aprovada e publicada.`,
+        PUBLISH: `A vaga "${job.title}" foi publicada.`,
+        REOPEN: `A vaga "${job.title}" foi reaberta.`,
+        REJECT: `A vaga "${job.title}" foi rejeitada.${notes ? ` Motivo: ${notes}` : ""}`,
+        PAUSE: `A vaga "${job.title}" foi pausada.`,
+        CLOSE: `A vaga "${job.title}" foi encerrada.`,
+      };
+      await notifyCompanyMembers(job.companyId, {
+        title: "Moderação de vaga",
+        message: messages[action] || `Status atualizado: ${newStatus}`,
+        type: "JOB_ALERT",
+        link: "/empresa/vagas",
+      });
+    }
+
     return formRedirect(new URL(`/admin/vagas?sucesso=moderacao_concluida`, req.url));
   } catch (error) {
     console.error("Erro na moderação da vaga:", error);

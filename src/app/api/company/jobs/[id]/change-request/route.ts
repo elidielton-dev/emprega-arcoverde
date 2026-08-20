@@ -34,5 +34,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     details: { jobId: job.id, companyId: job.companyId },
   });
 
+  const { notifyAdmins } = await import("@/lib/notifications/notify");
+  await notifyAdmins({
+    title: "Pedido de alteração de vaga",
+    message: "Uma empresa solicitou alteração em uma vaga publicada.",
+    type: "JOB_ALERT",
+    link: "/admin/vagas",
+  });
+
   return formRedirect(new URL("/empresa/vagas?sucesso=alteracao_solicitada", req.url));
 }
