@@ -5,13 +5,13 @@ import { Mail, ArrowLeft, Send } from "lucide-react";
 
 export default function EsqueciSenhaPage() {
   return (
-    <div className="min-h-[80vh] flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-[#111111]">
+    <div className="min-h-[80vh] flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-[#F4F5F7]">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center space-y-3">
         <BrandLogo className="justify-center mx-auto" />
-        <h1 className="text-2xl font-extrabold text-white tracking-tight">
+        <h1 className="text-2xl font-extrabold text-[#E65100] tracking-tight">
           Recuperar senha
         </h1>
-        <p className="text-sm text-[#FDCFA9]">
+        <p className="text-sm text-[#4B5563]">
           Informe seu e-mail para receber as instruções de redefinição de acesso.
         </p>
       </div>
