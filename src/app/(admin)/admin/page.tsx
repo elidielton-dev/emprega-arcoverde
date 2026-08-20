@@ -132,13 +132,13 @@ export default async function AdminDashboardPage() {
         }
       />
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {/* KPIs — uma grade só (sem duplicar faixa municipal) */}
+      <div className={`grid grid-cols-2 gap-3 ${municipal ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}>
         {admin && (
           <FunnelCard
-            label="Vagas aguardando moderação"
-            count={pendingJobsCount}
-            hint="Fila institucional"
+            label={municipal ? "Vagas ativas" : "Vagas aguardando moderação"}
+            count={municipal ? publishedJobs : pendingJobsCount}
+            hint={municipal ? `${pendingJobsCount} na fila` : "Fila institucional"}
             icon={<Briefcase className="h-4 w-4" />}
           />
         )}
@@ -149,37 +149,38 @@ export default async function AdminDashboardPage() {
           icon={<Building2 className="h-4 w-4" />}
         />
         <FunnelCard
-          label="Candidatos cadastrados"
+          label="Candidatos"
           count={totalCandidates}
-          hint={`+${newCandidatesMonth} este mês`}
+          hint={
+            municipal
+              ? `${assistedCandidatesCount} assistidos`
+              : `+${newCandidatesMonth} este mês`
+          }
           icon={<Users className="h-4 w-4" />}
         />
-        {sala || canPerformAssistedService(session.role) ? (
+        {municipal ? (
+          <FunnelCard
+            label="Candidaturas recebidas"
+            count={appsSubmitted}
+            hint="No funil"
+          />
+        ) : null}
+        {sala || (!municipal && canPerformAssistedService(session.role)) ? (
           <FunnelCard
             label="Atendimentos esta semana"
             count={assistedThisWeek}
             hint={`${assistedCandidatesCount} assistidos no total`}
             icon={<Headset className="h-4 w-4" />}
           />
-        ) : (
+        ) : municipal || canManageCourses(session.role) ? (
           <FunnelCard
             label="Cursos ativos"
             count={activeCoursesCount}
-            hint="Disponíveis"
+            hint="Qualificação"
             icon={<GraduationCap className="h-4 w-4" />}
           />
-        )}
+        ) : null}
       </div>
-
-      {municipal && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <FunnelCard label="Vagas ativas" count={publishedJobs} hint="Publicadas" />
-          <FunnelCard label="Candidaturas (recebidas)" count={appsSubmitted} hint="SUBMITTED" />
-          <FunnelCard label="Cadastros assistidos" count={assistedCandidatesCount} hint="Presenciais" />
-          <FunnelCard label="Cursos ativos" count={activeCoursesCount} hint="Qualificação" />
-          <FunnelCard label="Empresas parceiras" count={activeCompanies} hint="Ativas" />
-        </div>
-      )}
 
       {/* Alertas / fila */}
       <div className={`grid gap-4 ${admin ? "xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]" : ""}`}>
@@ -206,7 +207,7 @@ export default async function AdminDashboardPage() {
                     <div className="flex shrink-0 items-center gap-2">
                       <StatusPill label="Pendente" tone="orange" />
                       <Link
-                        href="/admin/vagas"
+                        href={`/admin/vagas?job=${job.id}`}
                         className="rounded-md border border-[#E65100]/40 px-2.5 py-1 text-[11px] font-bold text-[#E65100] hover:bg-[#FFF4EA]"
                       >
                         Revisar
@@ -216,11 +217,6 @@ export default async function AdminDashboardPage() {
                 ))}
               </ul>
             )}
-            <div className="border-t border-[#E6E8EB] px-4 py-2.5">
-              <Link href="/admin/vagas" className="text-[11px] font-bold text-[#E65100] hover:underline">
-                Ver fila completa →
-              </Link>
-            </div>
           </SurfaceCard>
         )}
 
@@ -312,11 +308,9 @@ export default async function AdminDashboardPage() {
               <SecondaryButton href="/admin/vagas" className="w-full">
                 Moderar vagas
               </SecondaryButton>
-              {canPerformAssistedService(session.role) && (
-                <SecondaryButton href="/admin/atendimento-assistido" className="w-full">
-                  Novo atendimento
-                </SecondaryButton>
-              )}
+              <SecondaryButton href="/admin/candidatos" className="w-full">
+                Banco de candidatos
+              </SecondaryButton>
             </div>
           </SurfaceCard>
         )}
@@ -368,7 +362,7 @@ export default async function AdminDashboardPage() {
               label: "Usuários",
               desc: "Permissões e acessos",
             },
-            { href: "/admin/auditoria", label: "Privacidade", desc: "LGPD e auditoria" },
+            { href: "/admin/auditoria", label: "Auditoria e LGPD", desc: "Logs e exclusões" },
             canManageCourses(session.role) && {
               href: "/admin/cursos",
               label: "Cursos",

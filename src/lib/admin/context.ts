@@ -9,7 +9,6 @@ import {
   canViewAllCandidates,
   canViewIndicators,
   isAdmin,
-  isMunicipalOrSuperAdmin,
   type UserRole,
 } from "@/lib/auth/rbac";
 
@@ -17,7 +16,7 @@ export type AdminNavItem = {
   href: string;
   label: string;
   exact?: boolean;
-  group?: "operation" | "content" | "governance";
+  group?: "operation" | "governance";
 };
 
 export type AdminContext = {
@@ -26,6 +25,7 @@ export type AdminContext = {
   orgHint: string;
   roleLabel: string;
   navItems: AdminNavItem[];
+  canSearchCandidates: boolean;
 };
 
 function orgFromRole(role: string): { orgLabel: string; orgHint: string } {
@@ -43,7 +43,10 @@ function orgFromRole(role: string): { orgLabel: string; orgHint: string } {
   }
 }
 
-/** Itens de menu filtrados pelo papel (ERS / RBAC). */
+/**
+ * Menu filtrado por papel.
+ * Conteúdos / Links úteis / Configurações ficam fora até terem gestão real.
+ */
 export function buildAdminNav(role: string): AdminNavItem[] {
   const items: AdminNavItem[] = [
     { href: "/admin", label: "Visão geral", exact: true, group: "operation" },
@@ -65,12 +68,6 @@ export function buildAdminNav(role: string): AdminNavItem[] {
       group: "operation",
     });
   }
-  if (isAdmin(role)) {
-    items.push(
-      { href: "/admin/conteudos", label: "Conteúdos", group: "content" },
-      { href: "/admin/links-uteis", label: "Links úteis", group: "content" },
-    );
-  }
   if (canManageCourses(role)) {
     items.push({ href: "/admin/cursos", label: "Cursos", group: "governance" });
   }
@@ -82,9 +79,6 @@ export function buildAdminNav(role: string): AdminNavItem[] {
   }
   if (isAdmin(role)) {
     items.push({ href: "/admin/auditoria", label: "Auditoria", group: "governance" });
-  }
-  if (isMunicipalOrSuperAdmin(role)) {
-    items.push({ href: "/admin/configuracoes", label: "Configurações", group: "governance" });
   }
 
   return items;
@@ -105,5 +99,6 @@ export async function requireAdminContext(): Promise<AdminContext> {
     orgHint,
     roleLabel,
     navItems: buildAdminNav(session.role),
+    canSearchCandidates: canViewAllCandidates(session.role),
   };
 }

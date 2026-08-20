@@ -264,7 +264,7 @@ export function UsersBoard({ users, currentUserId, error, success }: Props) {
                   </div>
                 </dl>
                 <div>
-                  <p className="text-xs font-bold text-[#1C1410]">Permissões principais</p>
+                  <p className="text-xs font-bold text-[#1C1410]">Permissões do perfil</p>
                   <ul className="mt-2 space-y-1.5">
                     {perms.map((p) => (
                       <li key={p} className="flex items-center gap-2 text-[11px] text-[#57433C]">

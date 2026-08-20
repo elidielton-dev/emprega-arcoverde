@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import Link from "next/link";
 import {
   Building2,
   Mail,
@@ -255,12 +254,6 @@ export function CompaniesBoard({ companies, success }: Props) {
                 <PrimaryButton href={`/admin/vagas?empresa=${selected.id}`} className="w-full">
                   Ver vagas
                 </PrimaryButton>
-                <Link
-                  href="/admin/empresas/nova"
-                  className="block text-center text-xs font-bold text-[#E65100] hover:underline"
-                >
-                  Cadastrar outra empresa
-                </Link>
               </div>
             </SurfaceCard>
           ) : (

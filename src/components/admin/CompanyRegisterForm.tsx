@@ -157,11 +157,6 @@ export function CompanyRegisterForm({
       <PageHeader
         title="Cadastrar empresa"
         description="Registre uma empresa parceira em nome da instituição autorizada."
-        actions={
-          <Link href="/admin/empresas" className="text-xs font-bold text-[#78716c] hover:text-[#E65100]">
-            Cancelar
-          </Link>
-        }
       />
 
       <div className="flex flex-wrap gap-2 border-b border-[#E6E8EB] pb-3">

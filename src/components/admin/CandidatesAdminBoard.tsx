@@ -151,7 +151,7 @@ export function CandidatesAdminBoard({
             onChange={(e) => setOnlyAvailable(e.target.checked)}
             className="rounded border-[#E6E8EB] text-[#E65100]"
           />
-          Somente disponíveis
+          Ocultar rejeitados
         </label>
       </SurfaceCard>
 
@@ -272,13 +272,10 @@ export function CandidatesAdminBoard({
                 <div className="flex gap-2">
                   <Link
                     href={`/admin/candidatos/${selected.id}`}
-                    className="flex-1 rounded-md border border-[#E6E8EB] px-3 py-2 text-center text-xs font-bold text-[#1C1410] hover:bg-[#F4F5F7]"
+                    className="flex-1 rounded-md bg-[#E65100] px-3 py-2 text-center text-xs font-bold text-white hover:bg-[#D84315]"
                   >
-                    Ver perfil
+                    Ver perfil completo
                   </Link>
-                  <PrimaryButton href="/admin/atendimento-assistido" className="flex-1">
-                    Encaminhar
-                  </PrimaryButton>
                 </div>
                 {selected.documentUrl && (
                   <a

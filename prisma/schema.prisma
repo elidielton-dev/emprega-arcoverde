@@ -231,6 +231,8 @@ model CandidateProfile {
   city                 String    @default("Arcoverde")
   state                String    @default("PE")
   neighborhood         String?
+  street               String?
+  addressNumber        String?
   birthDate            DateTime?
   educationLevel       String    @default("MEDIO")
   driverLicense        String?   @default("NENHUMA")

@@ -25,7 +25,7 @@ function salaryLabel(job: {
 export default async function AdminVagasPage({
   searchParams,
 }: {
-  searchParams: { sucesso?: string };
+  searchParams: { sucesso?: string; job?: string; empresa?: string };
 }) {
   const session = await getSession();
   if (!session || !isAdmin(session.role)) {
@@ -48,6 +48,7 @@ export default async function AdminVagasPage({
     slug: job.slug,
     status: job.status,
     categoryName: job.category.name,
+    companyId: job.companyId,
     companyName: job.company.tradeName || job.company.name,
     companyCnpj: job.company.cnpj ? formatCnpj(job.company.cnpj) : null,
     city: job.city,
@@ -68,5 +69,12 @@ export default async function AdminVagasPage({
     })),
   }));
 
-  return <JobsModerationBoard jobs={rows} success={Boolean(searchParams.sucesso)} />;
+  return (
+    <JobsModerationBoard
+      jobs={rows}
+      success={Boolean(searchParams.sucesso)}
+      initialJobId={searchParams.job}
+      initialCompanyId={searchParams.empresa}
+    />
+  );
 }

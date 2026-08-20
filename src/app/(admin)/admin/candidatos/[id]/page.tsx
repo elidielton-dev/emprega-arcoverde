@@ -6,7 +6,6 @@ import { getSession } from "@/lib/auth/session";
 import { canDeleteCurriculum, canValidateCurriculum, canViewAllCandidates } from "@/lib/auth/rbac";
 import {
   PageHeader,
-  PrimaryButton,
   StatusPill,
   SurfaceCard,
 } from "@/components/admin/ui";
@@ -83,15 +82,12 @@ export default async function AdminCandidatoDetalhePage({
         title="Perfil do candidato"
         description="Visualização institucional com dados protegidos"
         actions={
-          <>
-            <PrimaryButton href="/admin/atendimento-assistido">Encaminhar para vaga</PrimaryButton>
-            <Link
-              href="/admin/candidatos"
-              className="rounded-md border border-[#E6E8EB] px-3.5 py-2 text-xs font-bold text-[#1C1410] hover:bg-[#F4F5F7]"
-            >
-              Voltar à lista
-            </Link>
-          </>
+          <Link
+            href="/admin/candidatos"
+            className="rounded-md border border-[#E6E8EB] px-3.5 py-2 text-xs font-bold text-[#1C1410] hover:bg-[#F4F5F7]"
+          >
+            Voltar à lista
+          </Link>
         }
       />
 

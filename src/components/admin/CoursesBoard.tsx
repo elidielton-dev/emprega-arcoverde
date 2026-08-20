@@ -68,7 +68,7 @@ export function CoursesBoard({ courses }: Props) {
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <FunnelCard label="Cursos ativos" count={counts.active} icon={<GraduationCap className="h-4 w-4" />} />
-        <FunnelCard label="Disponíveis" count={counts.total} hint="No catálogo" />
+        <FunnelCard label="No catálogo" count={counts.total} hint="Ativos + encerrados" />
         <FunnelCard label="Encerrados" count={counts.expired} />
         <FunnelCard label="Cliques de interesse" count={counts.clicks} />
       </div>

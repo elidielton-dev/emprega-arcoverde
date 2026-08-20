@@ -26,6 +26,7 @@ export type ModerationJobRow = {
   slug: string;
   status: string;
   categoryName: string;
+  companyId: string;
   companyName: string;
   companyCnpj: string | null;
   city: string;
@@ -61,30 +62,57 @@ const TABS: { key: string; label: string; match: (s: string) => boolean }[] = [
   { key: "ALL", label: "Todas", match: () => true },
 ];
 
-type Props = { jobs: ModerationJobRow[]; success?: boolean };
+type Props = {
+  jobs: ModerationJobRow[];
+  success?: boolean;
+  initialJobId?: string;
+  initialCompanyId?: string;
+};
 
-export function JobsModerationBoard({ jobs, success }: Props) {
-  const [tab, setTab] = useState("PENDING_REVIEW");
+export function JobsModerationBoard({
+  jobs,
+  success,
+  initialJobId,
+  initialCompanyId,
+}: Props) {
+  const [tab, setTab] = useState(() => {
+    if (initialCompanyId || initialJobId) return "ALL";
+    return "PENDING_REVIEW";
+  });
   const [q, setQ] = useState("");
+  const [companyId, setCompanyId] = useState(initialCompanyId || "");
   const [notes, setNotes] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(
-    jobs.find((j) => j.status === "PENDING_REVIEW" || j.status === "DRAFT")?.id || jobs[0]?.id || null,
-  );
+  const [selectedId, setSelectedId] = useState<string | null>(() => {
+    if (initialJobId && jobs.some((j) => j.id === initialJobId)) return initialJobId;
+    return (
+      jobs.find((j) => j.status === "PENDING_REVIEW" || j.status === "DRAFT")?.id ||
+      jobs[0]?.id ||
+      null
+    );
+  });
+
+  const companyOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    jobs.forEach((j) => map.set(j.companyId, j.companyName));
+    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [jobs]);
 
   const counts = useMemo(() => {
+    const base = companyId ? jobs.filter((j) => j.companyId === companyId) : jobs;
     return {
-      pending: jobs.filter((j) => j.status === "PENDING_REVIEW" || j.status === "DRAFT").length,
-      published: jobs.filter((j) => j.status === "PUBLISHED").length,
-      paused: jobs.filter((j) => j.status === "PAUSED").length,
-      rejected: jobs.filter((j) => j.status === "REJECTED").length,
-      total: jobs.length,
+      pending: base.filter((j) => j.status === "PENDING_REVIEW" || j.status === "DRAFT").length,
+      published: base.filter((j) => j.status === "PUBLISHED").length,
+      paused: base.filter((j) => j.status === "PAUSED").length,
+      rejected: base.filter((j) => j.status === "REJECTED").length,
+      total: base.length,
     };
-  }, [jobs]);
+  }, [jobs, companyId]);
 
   const tabDef = TABS.find((t) => t.key === tab) || TABS[0];
 
   const filtered = useMemo(() => {
     return jobs.filter((j) => {
+      if (companyId && j.companyId !== companyId) return false;
       if (!tabDef.match(j.status)) return false;
       if (!q.trim()) return true;
       const n = q.toLowerCase();
@@ -94,7 +122,7 @@ export function JobsModerationBoard({ jobs, success }: Props) {
         j.categoryName.toLowerCase().includes(n)
       );
     });
-  }, [jobs, tabDef, q]);
+  }, [jobs, tabDef, q, companyId]);
 
   const selected = filtered.find((j) => j.id === selectedId) || filtered[0] || null;
   const meta = selected ? STATUS_META[selected.status] || STATUS_META.DRAFT : null;
@@ -153,21 +181,18 @@ export function JobsModerationBoard({ jobs, success }: Props) {
           placeholder="Buscar por cargo ou empresa..."
           className="flex-1 rounded-md border border-[#E6E8EB] bg-[#F4F5F7] px-3 py-2 text-xs text-[#1C1410] outline-none focus:border-[#E65100]"
         />
-        <div className="flex flex-wrap gap-1">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setTab(t.key)}
-              className={`rounded-md px-2.5 py-1.5 text-[11px] font-bold ${
-                tab === t.key ? "bg-[#1C1410] text-white" : "bg-[#F4F5F7] text-[#57433C] hover:bg-[#E6E8EB]"
-              }`}
-            >
-              {t.label}
-              {t.key === "PENDING_REVIEW" ? ` (${counts.pending})` : ""}
-            </button>
+        <select
+          value={companyId}
+          onChange={(e) => setCompanyId(e.target.value)}
+          className="rounded-md border border-[#E6E8EB] bg-white px-3 py-2 text-xs"
+        >
+          <option value="">Todas as empresas</option>
+          {companyOptions.map(([id, name]) => (
+            <option key={id} value={id}>
+              {name}
+            </option>
           ))}
-        </div>
+        </select>
       </SurfaceCard>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">

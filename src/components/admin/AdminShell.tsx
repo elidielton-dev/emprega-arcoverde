@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -9,19 +9,14 @@ import {
   Building2,
   Users,
   Headset,
-  BookOpen,
-  Link2,
   GraduationCap,
   BarChart3,
   UserCog,
   ClipboardList,
-  Settings,
   Search,
-  Bell,
   Menu,
   X,
   LogOut,
-  ChevronDown,
   type LucideIcon,
 } from "lucide-react";
 import { BrandLogo } from "@/components/ui/BrandLogo";
@@ -33,13 +28,15 @@ const ICONS: Record<string, LucideIcon> = {
   "/admin/empresas": Building2,
   "/admin/candidatos": Users,
   "/admin/atendimento-assistido": Headset,
-  "/admin/conteudos": BookOpen,
-  "/admin/links-uteis": Link2,
   "/admin/cursos": GraduationCap,
   "/admin/indicadores": BarChart3,
   "/admin/usuarios": UserCog,
   "/admin/auditoria": ClipboardList,
-  "/admin/configuracoes": Settings,
+};
+
+const GROUP_LABEL: Record<string, string> = {
+  operation: "Operação",
+  governance: "Governança",
 };
 
 function isActive(pathname: string, href: string, exact?: boolean) {
@@ -48,6 +45,10 @@ function isActive(pathname: string, href: string, exact?: boolean) {
 }
 
 function breadcrumbLabel(pathname: string, items: AdminNavItem[]) {
+  if (pathname.startsWith("/admin/empresas/nova")) return "Nova empresa";
+  if (pathname.startsWith("/admin/vagas/nova")) return "Nova vaga";
+  if (pathname.startsWith("/admin/cursos/nova")) return "Novo curso";
+  if (pathname.match(/^\/admin\/candidatos\/[^/]+/)) return "Perfil do candidato";
   const match = [...items]
     .filter((i) => !i.exact)
     .sort((a, b) => b.href.length - a.href.length)
@@ -63,6 +64,7 @@ export type AdminShellProps = {
   userName: string;
   userRoleLabel: string;
   navItems: AdminNavItem[];
+  canSearchCandidates?: boolean;
   children: React.ReactNode;
 };
 
@@ -72,6 +74,7 @@ export function AdminShell({
   userName,
   userRoleLabel,
   navItems,
+  canSearchCandidates = true,
   children,
 }: AdminShellProps) {
   const pathname = usePathname() || "/admin";
@@ -84,6 +87,17 @@ export function AdminShell({
     .map((p) => p[0]?.toUpperCase())
     .join("");
 
+  const navSections = useMemo(() => {
+    const sections: { group: string; items: AdminNavItem[] }[] = [];
+    for (const item of navItems) {
+      const g = item.group || "operation";
+      const last = sections[sections.length - 1];
+      if (last && last.group === g) last.items.push(item);
+      else sections.push({ group: g, items: [item] });
+    }
+    return sections;
+  }, [navItems]);
+
   const sidebar = (
     <aside className="flex h-full w-[268px] shrink-0 flex-col bg-[#1C1410] text-white">
       <div className="space-y-3 border-b border-white/10 px-4 py-4">
@@ -94,37 +108,47 @@ export function AdminShell({
         >
           <BrandLogo variant="compact" isLink={false} className="justify-center" />
         </Link>
-        <div className="flex w-full items-center justify-between gap-2 rounded-md border border-white/15 bg-white/5 px-3 py-2.5 text-left">
-          <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#A8A29E]">
-              Contexto
-            </p>
-            <p className="truncate text-sm font-bold text-white">{orgLabel}</p>
-          </div>
-          <ChevronDown className="h-4 w-4 shrink-0 text-[#A8A29E]" />
+        <div className="rounded-md border border-white/15 bg-white/5 px-3 py-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#A8A29E]">
+            Contexto
+          </p>
+          <p className="truncate text-sm font-bold text-white">{orgLabel}</p>
         </div>
       </div>
 
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-2.5 py-4">
-        {navItems.map((item) => {
-          const active = isActive(pathname, item.href, item.exact);
-          const Icon = ICONS[item.href] || LayoutDashboard;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setMobileOpen(false)}
-              className={`relative flex items-center gap-3 rounded-md px-3 py-2.5 text-[13px] font-medium transition ${
-                active
-                  ? "bg-white/10 text-white before:absolute before:inset-y-1.5 before:left-0 before:w-[3px] before:rounded-sm before:bg-[#E65100]"
-                  : "text-[#A8A29E] hover:bg-white/[0.06] hover:text-white"
-              }`}
-            >
-              <Icon className={`h-[18px] w-[18px] shrink-0 ${active ? "text-[#E65100]" : "opacity-85"}`} />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
+      <nav className="flex-1 space-y-4 overflow-y-auto px-2.5 py-4">
+        {navSections.map((section) => (
+          <div key={section.group}>
+            {navSections.length > 1 && (
+              <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-[#A8A29E]/80">
+                {GROUP_LABEL[section.group] || section.group}
+              </p>
+            )}
+            <div className="space-y-0.5">
+              {section.items.map((item) => {
+                const active = isActive(pathname, item.href, item.exact);
+                const Icon = ICONS[item.href] || LayoutDashboard;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={`relative flex items-center gap-3 rounded-md px-3 py-2.5 text-[13px] font-medium transition ${
+                      active
+                        ? "bg-white/10 text-white before:absolute before:inset-y-1.5 before:left-0 before:w-[3px] before:rounded-sm before:bg-[#E65100]"
+                        : "text-[#A8A29E] hover:bg-white/[0.06] hover:text-white"
+                    }`}
+                  >
+                    <Icon
+                      className={`h-[18px] w-[18px] shrink-0 ${active ? "text-[#E65100]" : "opacity-85"}`}
+                    />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       <div className="border-t border-white/10 px-3 py-4">
@@ -193,16 +217,15 @@ export function AdminShell({
           </div>
 
           <div className="flex items-center gap-2">
-            <Link
-              href="/admin/candidatos"
-              className="hidden items-center gap-2 rounded-md border border-[#E6E8EB] bg-[#F4F5F7] px-3 py-2 text-xs text-[#78716c] hover:border-[#E65100]/35 sm:flex"
-            >
-              <Search className="h-3.5 w-3.5" />
-              Buscar candidatos
-            </Link>
-            <span className="relative rounded-md border border-[#E6E8EB] p-2 text-[#78716c]">
-              <Bell className="h-4 w-4" />
-            </span>
+            {canSearchCandidates && (
+              <Link
+                href="/admin/candidatos"
+                className="hidden items-center gap-2 rounded-md border border-[#E6E8EB] bg-[#F4F5F7] px-3 py-2 text-xs text-[#78716c] hover:border-[#E65100]/35 sm:flex"
+              >
+                <Search className="h-3.5 w-3.5" />
+                Buscar candidatos
+              </Link>
+            )}
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1C1410] text-[11px] font-bold text-white">
               {initials || "A"}
             </div>
