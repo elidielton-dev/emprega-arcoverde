@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Archivo } from "next/font/google";
 import "./globals.css";
-import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
+import { PublicChrome } from "@/components/layout/PublicChrome";
 import { getSession } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
@@ -41,17 +40,11 @@ export default async function RootLayout({
   return (
     <html lang="pt-BR" className={archivo.variable}>
       <body className="min-h-screen flex flex-col bg-[#F4F5F7] text-[#1A1A1A] font-sans selection:bg-[#E65100] selection:text-white">
-        {/*
-          THESIS: A home é uma ferramenta de busca de vaga, no ritmo de um portal de emprego.
-          OWN-WORLD: Fundo cinza, cards brancos, títulos na laranja da logo como o verde do Glassdoor. Ação preta.
-          STORY: A pessoa lê o título, busca e vê vagas.
-          FIRST VIEWPORT: Header branco; card de busca; título laranja da marca; vagas abaixo.
-          FORM: Estrutura de portal de emprego; cor da logo só no destaque tipográfico.
-          FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
-        */}
-        <Navbar user={session ? { name: session.name, email: session.email, role: session.role } : null} />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        <PublicChrome
+          user={session ? { name: session.name, email: session.email, role: session.role } : null}
+        >
+          {children}
+        </PublicChrome>
       </body>
     </html>
   );

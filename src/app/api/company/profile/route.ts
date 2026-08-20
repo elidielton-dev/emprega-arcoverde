@@ -56,9 +56,9 @@ export async function POST(req: NextRequest) {
       details: { companyName: name, tradeName },
     });
 
-    return formRedirect(new URL("/empresa/perfil?sucesso=salvo", req.url));
+    return formRedirect(new URL("/empresa/configuracoes?sucesso=salvo", req.url));
   } catch (error) {
     console.error("Erro ao atualizar empresa:", error);
-    return formRedirect(new URL("/empresa/perfil?erro=falha", req.url));
+    return formRedirect(new URL("/empresa/configuracoes?erro=falha", req.url));
   }
 }

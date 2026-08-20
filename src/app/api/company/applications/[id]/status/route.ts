@@ -100,7 +100,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       });
     }
 
-    return formRedirect(new URL(`/empresa/vagas/${application.jobId}/candidaturas?sucesso=status_atualizado`, req.url));
+    return formRedirect(
+      new URL(
+        `/empresa/candidatos?vaga=${application.jobId}&app=${applicationId}&sucesso=status_atualizado`,
+        req.url,
+      ),
+    );
   } catch (error) {
     console.error("Erro ao atualizar status da candidatura:", error);
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });

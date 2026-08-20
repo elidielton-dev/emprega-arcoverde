@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, Clock3 } from "lucide-react";
+import { Clock3 } from "lucide-react";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { isWithinCompanyEditWindow } from "@/lib/jobs/edit-window";
@@ -30,12 +29,9 @@ export default async function EditarVagaEmpresaPage({
   const labelClass = "space-y-1.5 text-xs font-bold text-[#57433C]";
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10 space-y-6">
-      <Link href="/empresa/vagas" className="inline-flex items-center gap-2 text-xs text-[#78716c] hover:text-[#E65100]">
-        <ArrowLeft className="w-4 h-4" /> Voltar às vagas
-      </Link>
+    <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <h1 className="text-2xl font-black text-[#2E221F]">{canEdit ? "Editar vaga" : "Solicitar alteração"}</h1>
+        <h1 className="text-xl font-black text-[#1C1410]">{canEdit ? "Editar vaga" : "Solicitar alteração"}</h1>
         <p className="text-sm text-[#78716c]">
           {canEdit ? "A empresa pode corrigir os dados nas primeiras 12 horas após o cadastro." : "O prazo de edição direta terminou. Envie a solicitação para análise da ACA/Prefeitura."}
         </p>

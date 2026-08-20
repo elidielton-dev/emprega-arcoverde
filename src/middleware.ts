@@ -48,9 +48,7 @@ export async function middleware(req: NextRequest) {
 
   if (pathname.startsWith("/admin")) {
     if (!session) return loginRedirect(req);
-    const allowed =
-      isAdmin(session.role) ||
-      session.role === "ASSISTED_OPERATOR";
+    const allowed = isAdmin(session.role) || session.role === "ASSISTED_OPERATOR";
     if (!allowed) return loginRedirect(req);
 
     if (
