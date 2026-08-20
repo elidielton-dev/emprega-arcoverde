@@ -525,6 +525,20 @@ export function CandidatesBoard({ rows, jobs, initialVaga, initialEtapa, initial
                       name="scheduledAt"
                       className="w-full rounded-md border border-[#E6E8EB] px-2 py-2 text-xs"
                     />
+                    <select
+                      name="modality"
+                      defaultValue="PRESENCIAL"
+                      className="w-full rounded-md border border-[#E6E8EB] px-2 py-2 text-xs"
+                    >
+                      <option value="PRESENCIAL">Presencial</option>
+                      <option value="ONLINE">Online</option>
+                      <option value="HIBRIDO">Híbrido</option>
+                    </select>
+                    <input
+                      name="interviewer"
+                      placeholder="Entrevistador"
+                      className="w-full rounded-md border border-[#E6E8EB] px-2 py-2 text-xs"
+                    />
                     <input
                       name="location"
                       placeholder="Local ou link"

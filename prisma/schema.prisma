@@ -386,8 +386,14 @@ model Interview {
   scheduledAt    DateTime
   location       String?      // Endereço ou link online
   instructions   String?
-  status         String       @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED
+  modality       String       @default("PRESENCIAL") // PRESENCIAL, ONLINE, HIBRIDO
+  interviewer    String?
+  feedback       String?
+  rating         Int?         // 1-5
+  status         String       @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED, NO_SHOW
+  completedAt    DateTime?
   createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }
 
 // ==========================================

@@ -30,6 +30,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const scheduledAtValue = (formData.get("scheduledAt") as string)?.trim();
     const location = (formData.get("location") as string)?.trim() || null;
     const instructions = (formData.get("instructions") as string)?.trim() || null;
+    const modalityRaw = ((formData.get("modality") as string) || "PRESENCIAL").trim().toUpperCase();
+    const interviewer = (formData.get("interviewer") as string)?.trim() || null;
+    const modality = ["PRESENCIAL", "ONLINE", "HIBRIDO"].includes(modalityRaw)
+      ? modalityRaw
+      : "PRESENCIAL";
 
     if (!ALLOWED_STATUSES.includes(newStatus)) {
       return NextResponse.json({ error: "Status inválido" }, { status: 400 });
@@ -72,8 +77,25 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       if (newStatus === "INTERVIEW_SCHEDULED" && scheduledAt) {
         await tx.interview.upsert({
           where: { applicationId },
-          update: { scheduledAt, location, instructions, status: "SCHEDULED" },
-          create: { applicationId, scheduledAt, location, instructions },
+          update: {
+            scheduledAt,
+            location,
+            instructions,
+            modality,
+            interviewer,
+            status: "SCHEDULED",
+            feedback: null,
+            rating: null,
+            completedAt: null,
+          },
+          create: {
+            applicationId,
+            scheduledAt,
+            location,
+            instructions,
+            modality,
+            interviewer,
+          },
         });
       }
     });
