@@ -15,6 +15,9 @@
     "storage:ensure": "node scripts/ensure-storage-bucket.js",
     "smtp:verify": "node scripts/verify-smtp.js",
     "resend:verify": "node scripts/verify-resend.js",
+    "stack:validate": "node scripts/validate-stack.js",
+    "prod:health": "node scripts/check-production-health.js",
+    "rbac:audit": "node --test tests/rbac-product-audit.test.js",
     "test": "node --test tests/**/*.test.js"
   },
   "dependencies": {

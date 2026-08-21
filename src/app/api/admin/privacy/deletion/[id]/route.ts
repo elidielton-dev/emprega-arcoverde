@@ -5,6 +5,7 @@ import { canDeleteCurriculum } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/audit/audit";
 import { formRedirect } from "@/lib/http/form-redirect";
 import { notifyUser } from "@/lib/notifications/notify";
+import { tryDeleteFile } from "@/lib/storage/storage";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getSession();
@@ -26,6 +27,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   const subjectUserId = request.userId;
+  const fileKeysToDelete: string[] = [];
 
   await prisma.$transaction(async (tx) => {
     if (action === "PROCESS") {
@@ -35,6 +37,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       });
 
       if (profile) {
+        for (const doc of profile.documents) {
+          if (doc.fileKey) fileKeysToDelete.push(doc.fileKey);
+        }
         await tx.candidateDocument.deleteMany({ where: { candidateId: profile.id } });
         await tx.candidateProfile.delete({ where: { id: profile.id } });
       }
@@ -69,6 +74,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       },
     });
   });
+
+  for (const key of fileKeysToDelete) {
+    await tryDeleteFile(key);
+  }
 
   await logAudit({
     userId: session.userId,

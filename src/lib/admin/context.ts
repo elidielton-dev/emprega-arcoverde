@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth/session";
 import {
   ROLE_LABELS,
   canManageCourses,
+  canManageContent,
   canManageSiteSettings,
   canManageUsers,
   canPerformAssistedService,
@@ -69,6 +70,10 @@ export function buildAdminNav(role: string): AdminNavItem[] {
   }
   if (canManageSiteSettings(role)) {
     items.push({ href: "/admin/configuracoes", label: "Configurações", group: "governance" });
+  }
+  if (canManageContent(role)) {
+    items.push({ href: "/admin/conteudos", label: "Conteúdos", group: "governance" });
+    items.push({ href: "/admin/links-uteis", label: "Links úteis", group: "governance" });
   }
   if (canManageCourses(role)) {
     items.push({ href: "/admin/cursos", label: "Cursos", group: "governance" });

@@ -30,6 +30,16 @@ export function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/conteudos" className="hover:text-white transition">
+                  Conteúdos
+                </Link>
+              </li>
+              <li>
+                <Link href="/links-uteis" className="hover:text-white transition">
+                  Links úteis
+                </Link>
+              </li>
+              <li>
                 <Link href="/contato" className="hover:text-white transition">
                   Contato
                 </Link>

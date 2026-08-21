@@ -4,7 +4,8 @@ import { getSession } from "@/lib/auth/session";
 import { isAdmin } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/audit/audit";
 import { formRedirect } from "@/lib/http/form-redirect";
-import { generateInterviewInviteEmail, sendEmail } from "@/lib/mail/mailer";
+import { generateInterviewInviteEmail } from "@/lib/mail/mailer";
+import { sendEmailIfAllowed } from "@/lib/notifications/preferences";
 
 const MODALITIES = ["PRESENCIAL", "ONLINE", "HIBRIDO"] as const;
 const STATUSES = ["SCHEDULED", "COMPLETED", "CANCELLED", "NO_SHOW"] as const;
@@ -84,7 +85,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       });
 
       if (formData.get("sendInvite") !== "0") {
-        await sendEmail({
+        await sendEmailIfAllowed(interview.application.candidate.userId, {
           to: interview.application.candidate.user.email,
           subject: `Entrevista reagendada: ${interview.application.job.title}`,
           html: generateInterviewInviteEmail(
@@ -94,6 +95,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
             location,
             instructions,
           ),
+          kind: "status",
         });
       }
 

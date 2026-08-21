@@ -22,6 +22,8 @@ export function Navbar({ user }: NavbarProps) {
   const navLinks = [
     { label: "Vagas", href: "/vagas" },
     { label: "Cursos", href: "/cursos" },
+    { label: "Conteúdos", href: "/conteudos" },
+    { label: "Links úteis", href: "/links-uteis" },
     { label: "Contato", href: "/contato" },
   ];
 
