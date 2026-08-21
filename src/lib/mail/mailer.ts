@@ -36,6 +36,15 @@ function emailProvider(): "resend" | "smtp" | "mock" {
   return "mock";
 }
 
+/** True se há Resend ou SMTP real (não mock). */
+export function isEmailDeliveryConfigured() {
+  return emailProvider() !== "mock";
+}
+
+export function getEmailProviderName() {
+  return emailProvider();
+}
+
 let transporter: Transporter | null = null;
 let resendClient: Resend | null = null;
 
@@ -66,7 +75,7 @@ export async function sendEmail({
   subject,
   html,
   text,
-}: SendEmailOptions): Promise<{ success: boolean; messageId: string }> {
+}: SendEmailOptions): Promise<{ success: boolean; messageId: string; error?: string }> {
   const from =
     process.env.EMAIL_FROM?.trim() || "Emprega Arcoverde <onboarding@resend.dev>";
   const provider = emailProvider();
@@ -93,7 +102,13 @@ export async function sendEmail({
       });
       if (error) {
         console.error("Falha no envio Resend:", error);
-        return { success: false, messageId: "" };
+        return {
+          success: false,
+          messageId: "",
+          error: typeof error === "object" && error && "message" in error
+            ? String((error as { message?: string }).message || error)
+            : String(error),
+        };
       }
       return {
         success: true,
@@ -101,7 +116,11 @@ export async function sendEmail({
       };
     } catch (error) {
       console.error("Falha no envio Resend:", error);
-      return { success: false, messageId: "" };
+      return {
+        success: false,
+        messageId: "",
+        error: error instanceof Error ? error.message : String(error),
+      };
     }
   }
 
@@ -149,17 +168,27 @@ export function generateApplicationConfirmationEmail(
   `;
 }
 
-export function generatePasswordResetEmail(name: string, token: string) {
-  const url = `${process.env.APP_URL || "http://localhost:3000"}/redefinir-senha?token=${encodeURIComponent(token)}`;
-  return `
+export function generatePasswordResetEmail(
+  name: string,
+  token: string,
+  appUrl?: string,
+) {
+  const base = (appUrl || process.env.APP_URL || "http://localhost:3000").replace(/\/$/, "");
+  const url = `${base}/redefinir-senha?token=${encodeURIComponent(token)}`;
+  return {
+    html: `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
       <h1 style="color: #e65100; font-size: 22px;">Redefinição de senha</h1>
       <p>Olá, <strong>${name}</strong>.</p>
       <p>Recebemos uma solicitação para redefinir sua senha. O link abaixo é válido por uma hora.</p>
       <p><a href="${url}" style="background:#e65100;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;display:inline-block;">Criar nova senha</a></p>
+      <p style="font-size:12px;color:#666;word-break:break-all;">Se o botão não funcionar, copie e cole este link no navegador:<br/>${url}</p>
       <p>Se você não fez esta solicitação, ignore esta mensagem.</p>
     </div>
-  `;
+  `,
+    text: `Olá, ${name}.\n\nRedefina sua senha (válido por 1 hora):\n${url}\n\nSe você não solicitou, ignore este e-mail.`,
+    resetUrl: url,
+  };
 }
 
 export function generateInterviewInviteEmail(

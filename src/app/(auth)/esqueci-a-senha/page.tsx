@@ -3,7 +3,25 @@ import Link from "next/link";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import { Mail, ArrowLeft, Send } from "lucide-react";
 
-export default function EsqueciSenhaPage({ searchParams }: { searchParams: { sucesso?: string } }) {
+export default function EsqueciSenhaPage({
+  searchParams,
+}: {
+  searchParams: { sucesso?: string; erro?: string };
+}) {
+  const erro = searchParams.erro;
+  const errorMessage =
+    erro === "email_obrigatorio"
+      ? "Informe o e-mail cadastrado."
+      : erro === "email_nao_configurado"
+        ? "O envio de e-mail ainda não está configurado no servidor. Peça ajuda na Sala do Empreendedor ou à equipe técnica (RESEND_API_KEY / SMTP)."
+        : erro === "falha_envio"
+          ? "Não foi possível enviar o e-mail agora. Confira se o endereço está certo e tente de novo em alguns minutos. Se persistir, use o e-mail da conta Resend (modo teste) ou procure a Sala do Empreendedor."
+          : erro === "erro_servidor"
+            ? "Erro interno ao solicitar recuperação. Tente novamente."
+            : erro
+              ? "Não foi possível processar a solicitação."
+              : null;
+
   return (
     <div className="min-h-[80vh] flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-[#F4F5F7]">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center space-y-3">
@@ -20,7 +38,13 @@ export default function EsqueciSenhaPage({ searchParams }: { searchParams: { suc
         <div className="bg-white py-8 px-6 sm:px-10 rounded-3xl border border-[#FEEDDF] shadow-md space-y-6">
           {searchParams.sucesso && (
             <p className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
-              Se o e-mail estiver cadastrado, enviaremos um link válido por uma hora.
+              Se o e-mail estiver cadastrado, enviaremos um link válido por uma hora. Confira também a
+              caixa de spam.
+            </p>
+          )}
+          {errorMessage && (
+            <p className="text-sm text-red-800 bg-red-50 border border-red-200 rounded-xl p-3">
+              {errorMessage}
             </p>
           )}
           <form action="/api/auth/forgot-password" method="POST" className="space-y-4">
