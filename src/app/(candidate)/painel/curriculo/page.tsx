@@ -171,7 +171,6 @@ export default async function CurriculoPage({ searchParams }: CurriculoPageProps
           documents={resumeDocs.map((doc) => ({
             id: doc.id,
             fileName: doc.fileName,
-            fileKey: doc.fileKey,
             fileSize: doc.fileSize,
           }))}
         />
