@@ -139,14 +139,13 @@ export async function POST(req: NextRequest) {
       completionDate: c.completionDate ? safeDate(c.completionDate) : null,
     }));
 
-    if (!structured.summary && parsed.text) {
-      structured.summary = parsed.text.replace(/\s+/g, " ").trim().slice(0, 900);
-    }
     if (!structured.headline) {
       structured.headline = structured.fullName
         ? `Profissional — ${structured.fullName}`
         : "Currículo importado do arquivo";
     }
+    // Não usar o PDF inteiro como resumo (misturava endereço/contato).
+    // O parser BR já preenche summary a partir de Objetivo/Resumo.
 
     stage = "apply";
     let filled = false;
