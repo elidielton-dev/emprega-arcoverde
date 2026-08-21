@@ -7,11 +7,11 @@ import {
   Upload,
   CheckCircle2,
   AlertCircle,
-  File,
-  Download,
 } from "lucide-react";
 import { ResumeFileUpload } from "@/components/candidate/ResumeFileUpload";
+import { ResumeDocumentList } from "@/components/candidate/ResumeDocumentList";
 import { ResumeStructuredForm } from "@/components/candidate/ResumeStructuredForm";
+import { UPLOAD_LIMITS } from "@/lib/resume/validate-upload";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -49,13 +49,19 @@ export default async function CurriculoPage({ searchParams }: CurriculoPageProps
         orderBy: { versionNumber: "desc" },
         take: 1,
       },
-      documents: { orderBy: { createdAt: "desc" } },
+      documents: {
+        where: { documentType: "RESUME" },
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
 
   if (!profile) {
     redirect("/painel/perfil");
   }
+
+  const resumeDocs = profile.documents;
+  const atDocLimit = resumeDocs.length >= UPLOAD_LIMITS.MAX_RESUME_DOCS;
 
   const currentResume = profile.resumeVersions[0];
   let skillsArray: string[] = [];
@@ -79,7 +85,7 @@ export default async function CurriculoPage({ searchParams }: CurriculoPageProps
             : searchParams.erro === "rate_limit"
               ? "Muitos envios em pouco tempo. Aguarde e tente de novo (máx. 5 por hora)."
               : searchParams.erro === "limite_anexos"
-                ? "Você atingiu o limite de anexos de currículo. Remova algum ou fale com o suporte."
+                ? "Você já tem 1 currículo anexado. Remova o arquivo atual para enviar outro."
                 : searchParams.erro === "nao_curriculo"
                   ? "O arquivo não parece um currículo. Envie um PDF/DOCX com dados profissionais."
                   : searchParams.erro === "sem_texto"
@@ -126,7 +132,9 @@ export default async function CurriculoPage({ searchParams }: CurriculoPageProps
                 ? searchParams.aviso === "pouco_dado"
                   ? "Anexo processado. Extraímos pouco dado estruturado — complete o formulário manualmente."
                   : "Anexo enviado com sucesso."
-                : "Currículo atualizado com sucesso!"}
+                : searchParams.sucesso === "anexo_removido"
+                  ? "Arquivo de currículo removido. Você pode enviar outro quando quiser."
+                  : "Currículo atualizado com sucesso!"}
           </span>
         </div>
       )}
@@ -146,43 +154,27 @@ export default async function CurriculoPage({ searchParams }: CurriculoPageProps
             <span>Enviar currículo (PDF ou DOCX)</span>
           </h2>
           <p className="text-xs text-[#78716c] mt-1">
-            Apenas PDF/DOCX (até 5 MB). Limitamos envios para evitar abuso. Ao enviar, preenchemos o formulário
-            abaixo automaticamente.
+            Apenas 1 arquivo (PDF ou DOCX, até 5 MB). Ao enviar, preenchemos o formulário abaixo
+            automaticamente. Para trocar o arquivo, remova o atual e envie outro.
           </p>
         </div>
 
-        <ResumeFileUpload />
-
-        {profile.documents.length > 0 && (
-          <div className="space-y-2 pt-2">
-            <h3 className="text-xs font-bold text-[#57433C]">Seus arquivos anexados:</h3>
-            <div className="space-y-2">
-              {profile.documents.map((doc) => (
-                <div
-                  key={doc.id}
-                  className="p-3.5 rounded-xl border border-[#FEEDDF] bg-stone-50 flex items-center justify-between text-xs"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <File className="w-4 h-4 text-[#E65100]" />
-                    <span className="font-semibold text-[#2E221F]">{doc.fileName}</span>
-                    <span className="text-[11px] text-[#A8A29E]">
-                      ({(doc.fileSize / 1024).toFixed(1)} KB)
-                    </span>
-                  </div>
-
-                  <a
-                    href={`/api/documents/${doc.fileKey}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs font-bold text-[#E65100] hover:underline flex items-center gap-1"
-                  >
-                    <Download className="w-3.5 h-3.5" /> Baixar
-                  </a>
-                </div>
-              ))}
-            </div>
+        {atDocLimit ? (
+          <div className="rounded-2xl border border-[#FEEDDF] bg-[#FFF8F2] p-4 text-xs text-[#57433C]">
+            Você já tem um currículo anexado. Remova-o abaixo se quiser enviar um novo arquivo.
           </div>
+        ) : (
+          <ResumeFileUpload />
         )}
+
+        <ResumeDocumentList
+          documents={resumeDocs.map((doc) => ({
+            id: doc.id,
+            fileName: doc.fileName,
+            fileKey: doc.fileKey,
+            fileSize: doc.fileSize,
+          }))}
+        />
       </div>
 
       {/* Formulário do Currículo Estruturado */}

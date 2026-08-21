@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db/prisma";
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 const MAX_UPLOADS_PER_HOUR = 5;
-const MAX_RESUME_DOCS = 8;
+const MAX_RESUME_DOCS = 1;
 
 const uploadHits = new Map<string, number[]>();
 

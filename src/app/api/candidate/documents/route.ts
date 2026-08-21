@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { formRedirect } from "@/lib/http/form-redirect";
 import { prisma } from "@/lib/db/prisma";
 import { getSession } from "@/lib/auth/session";
-import { trySaveFile } from "@/lib/storage/storage";
+import { tryDeleteFile, trySaveFile } from "@/lib/storage/storage";
 import { logAudit } from "@/lib/audit/audit";
 import { parseResumeBuffer } from "@/lib/matching/resume-parser";
 import { applyParsedResumeToCandidate } from "@/lib/resume/apply-parsed";
@@ -16,6 +16,66 @@ import {
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
+
+/** Remove o anexo de currículo do próprio candidato. */
+export async function DELETE(req: NextRequest) {
+  try {
+    const session = await getSession();
+    if (!session || session.role !== "CANDIDATE") {
+      return NextResponse.json({ ok: false, erro: "nao_autorizado" }, { status: 401 });
+    }
+
+    const profile = await prisma.candidateProfile.findUnique({
+      where: { userId: session.userId },
+    });
+    if (!profile) {
+      return NextResponse.json({ ok: false, erro: "perfil" }, { status: 404 });
+    }
+
+    let documentId: string | null = null;
+    const contentType = req.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const body = (await req.json().catch(() => null)) as { documentId?: string } | null;
+      documentId = body?.documentId?.trim() || null;
+    } else {
+      documentId = req.nextUrl.searchParams.get("id")?.trim() || null;
+    }
+
+    if (!documentId) {
+      return NextResponse.json({ ok: false, erro: "id_obrigatorio" }, { status: 400 });
+    }
+
+    const doc = await prisma.candidateDocument.findFirst({
+      where: { id: documentId, candidateId: profile.id },
+    });
+    if (!doc) {
+      return NextResponse.json({ ok: false, erro: "nao_encontrado" }, { status: 404 });
+    }
+
+    await prisma.candidateDocument.delete({ where: { id: doc.id } });
+    await tryDeleteFile(doc.fileKey);
+
+    try {
+      await logAudit({
+        userId: session.userId,
+        action: "DOCUMENT_DELETED",
+        resourceType: "CandidateDocument",
+        resourceId: doc.id,
+        details: { fileName: doc.fileName, fileKey: doc.fileKey },
+      });
+    } catch (auditErr) {
+      console.warn("Audit falhou (ignorado):", auditErr);
+    }
+
+    return NextResponse.json({
+      ok: true,
+      redirect: `/painel/curriculo?sucesso=anexo_removido&t=${Date.now()}`,
+    });
+  } catch (error) {
+    console.error("Erro ao remover documento:", error);
+    return NextResponse.json({ ok: false, erro: "falha_remover" }, { status: 500 });
+  }
+}
 
 function wantsJson(req: NextRequest) {
   const accept = req.headers.get("accept") || "";

@@ -170,3 +170,34 @@ async function readLocalFileOnly(fileKey: string): Promise<Buffer | null> {
   }
   return null;
 }
+
+/** Remove arquivo do storage (Supabase e/ou disco). Falhas são ignoradas. */
+export async function tryDeleteFile(fileKey: string): Promise<void> {
+  if (!fileKey) return;
+
+  if (useSupabaseStorage()) {
+    const client = supabaseAdmin();
+    if (client) {
+      try {
+        await client.storage.from(bucketName()).remove([fileKey]);
+      } catch (err) {
+        console.warn("Falha ao remover do Supabase Storage:", err);
+      }
+    }
+  }
+
+  const candidates = [
+    path.join(localStorageDir(), fileKey),
+    path.join(process.cwd(), "uploads", fileKey),
+    path.join(os.tmpdir(), "emprega-arcoverde-uploads", fileKey),
+  ];
+  for (const filePath of candidates) {
+    try {
+      if (fs.existsSync(filePath)) {
+        await fs.promises.unlink(filePath);
+      }
+    } catch (err) {
+      console.warn("Falha ao remover arquivo local:", filePath, err);
+    }
+  }
+}
