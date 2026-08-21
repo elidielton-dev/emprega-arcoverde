@@ -108,21 +108,6 @@ export default async function CurriculoPage({ searchParams }: CurriculoPageProps
         </div>
       )}
 
-      <div className="rounded-2xl border border-[#D0E2F7] bg-[#F0F7FC] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-bold text-[#0A66C2]">Veio do LinkedIn?</p>
-          <p className="text-xs text-[#4B5563]">
-            Importe experiências, cargos, formação e certificados pelo PDF do seu perfil.
-          </p>
-        </div>
-        <Link
-          href="/painel/importar-linkedin"
-          className="inline-flex items-center justify-center rounded-xl bg-[#0A66C2] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#004182]"
-        >
-          Importar do LinkedIn
-        </Link>
-      </div>
-
       {/* Formulário do Currículo Estruturado */}
       <form action="/api/candidate/resume" method="POST" className="bg-white p-6 sm:p-10 rounded-3xl border border-[#FEEDDF] shadow-xs space-y-8">
         {/* Resumo Profissional */}
