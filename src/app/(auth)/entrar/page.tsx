@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import { DemoAccounts } from "@/components/auth/DemoAccounts";
 import { OAuthButtons } from "@/components/auth/OAuthButtons";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { Lock, Mail, ArrowRight } from "lucide-react";
 
 interface LoginPageProps {
@@ -17,6 +18,7 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
   const erro = searchParams.erro;
   const redirect = searchParams.redirect || "";
   const sucesso = searchParams.sucesso;
+  const oauthEnabled = isSupabaseConfigured();
 
   return (
     <div className="min-h-[80vh] flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-[#F4F5F7]">
@@ -59,7 +61,7 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
             </div>
           )}
 
-          <OAuthButtons next={redirect} variant="light" />
+          <OAuthButtons next={redirect} variant="light" enabled={oauthEnabled} />
 
           <form id="login-form" action="/api/auth/login" method="POST" className="space-y-4">
             <input type="hidden" name="redirect" value={redirect} />

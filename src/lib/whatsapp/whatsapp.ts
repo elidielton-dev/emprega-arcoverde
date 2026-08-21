@@ -6,47 +6,40 @@ export interface WhatsAppMessageOptions {
   isConfidential?: boolean;
 }
 
+/**
+ * Canal oficial Meta/etc. — desativado por decisão de produto (2026-08).
+ * Contato WhatsApp na plataforma = links wa.me manuais (empresa / interesse).
+ * Não simula sucesso quando o provedor está off.
+ */
 export async function sendOfficialWhatsAppNotification({
   toPhoneNumber,
   templateName,
   candidateOptIn,
-  variables,
-  isConfidential,
 }: WhatsAppMessageOptions): Promise<{ success: boolean; reason?: string }> {
-  // 1. Verificar se o usuário deu consentimento explícito
   if (!candidateOptIn) {
     return { success: false, reason: "Candidato não optou por notificações via WhatsApp" };
   }
 
-  // 2. Verificar se o provedor oficial está ativado nas variáveis de ambiente
   const isEnabled = process.env.WHATSAPP_PROVIDER_ENABLED === "true";
+  if (!isEnabled) {
+    return {
+      success: false,
+      reason: "WhatsApp oficial não habilitado. Use contato manual (wa.me).",
+    };
+  }
+
   const token = process.env.WHATSAPP_PROVIDER_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-
-  if (!isEnabled || !token || !phoneNumberId) {
-    if (process.env.NODE_ENV === "development") {
-      console.log("📱 [MOCK WHATSAPP DISPATCH - Provedor desativado por padrão]");
-      console.log(`Para: ${toPhoneNumber} | Template: ${templateName}`);
-      console.log("Variáveis sanitizadas:", {
-        ...variables,
-        companyName: isConfidential ? "Empresa Confidencial" : variables.companyName,
-      });
-    }
-    return { success: true, reason: "Mock executado com sucesso (integração real desativada por padrão)" };
+  if (!token || !phoneNumberId) {
+    return { success: false, reason: "Credenciais do provedor WhatsApp ausentes" };
   }
 
-  // 3. Ponto de integração oficial (Meta Cloud API / Gupshup / Z-API Oficial)
-  try {
-    // Sanitização estrita de confidencialidade
-    const safeVariables = { ...variables };
-    if (isConfidential && safeVariables.companyName) {
-      safeVariables.companyName = "Empresa Confidencial";
-    }
-
-    // Chamada à API Oficial via HTTPS
-    return { success: true };
-  } catch (error) {
-    console.error("Falha no envio do WhatsApp oficial:", error);
-    return { success: false, reason: "Erro na API do provedor" };
-  }
+  // Integração real ainda não ligada — não reportar sucesso falso
+  console.warn(
+    `[whatsapp] Provedor marcado como enabled, mas envio oficial não está implementado. Destino=${toPhoneNumber} template=${templateName}`,
+  );
+  return {
+    success: false,
+    reason: "Envio oficial WhatsApp não implementado. Desative WHATSAPP_PROVIDER_ENABLED.",
+  };
 }

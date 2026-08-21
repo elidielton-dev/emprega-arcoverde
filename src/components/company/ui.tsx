@@ -116,11 +116,13 @@ export function PrimaryButton({
   href,
   type = "button",
   className = "",
+  onClick,
 }: {
   children: ReactNode;
   href?: string;
   type?: "button" | "submit";
   className?: string;
+  onClick?: () => void;
 }) {
   const cls = `inline-flex items-center justify-center gap-1.5 rounded-md bg-[#E65100] px-3.5 py-2 text-xs font-bold text-white hover:bg-[#D84315] ${className}`;
   if (href) {
@@ -131,7 +133,7 @@ export function PrimaryButton({
     );
   }
   return (
-    <button type={type} className={cls}>
+    <button type={type} className={cls} onClick={onClick}>
       {children}
     </button>
   );

@@ -5,7 +5,10 @@ import { logAudit } from "@/lib/audit/audit";
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   const urlSecret = req.nextUrl.searchParams.get("secret");
-  const expectedSecret = process.env.CRON_SECRET || "cron-secret-arcoverde-key-987654";
+  const expectedSecret = process.env.CRON_SECRET;
+  if (!expectedSecret) {
+    return NextResponse.json({ error: "CRON_SECRET não configurado" }, { status: 500 });
+  }
 
   const isAuthorized =
     authHeader === `Bearer ${expectedSecret}` || urlSecret === expectedSecret;

@@ -1,11 +1,17 @@
 import Link from "next/link";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 interface OAuthButtonsProps {
   next?: string;
   variant?: "dark" | "light";
+  /** Override; por padrão detecta NEXT_PUBLIC_SUPABASE_* */
+  enabled?: boolean;
 }
 
-export function OAuthButtons({ next = "", variant = "dark" }: OAuthButtonsProps) {
+export function OAuthButtons({ next = "", variant = "dark", enabled }: OAuthButtonsProps) {
+  const show = enabled ?? isSupabaseConfigured();
+  if (!show) return null;
+
   const nextQuery = next ? `&next=${encodeURIComponent(next)}` : "";
   const isDark = variant === "dark";
 

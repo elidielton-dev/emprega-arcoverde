@@ -12,6 +12,9 @@
     "db:push": "prisma db push",
     "db:seed": "node prisma/seed.js",
     "db:studio": "prisma studio",
+    "storage:ensure": "node scripts/ensure-storage-bucket.js",
+    "smtp:verify": "node scripts/verify-smtp.js",
+    "resend:verify": "node scripts/verify-resend.js",
     "test": "node --test tests/**/*.test.js"
   },
   "dependencies": {
@@ -25,17 +28,20 @@
     "lucide-react": "^0.468.0",
     "mammoth": "^1.12.1",
     "next": "^14.2.21",
+    "nodemailer": "^9.0.5",
     "pdf-parse": "^2.4.5",
     "prisma": "^5.22.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.54.0",
+    "resend": "^6.21.0",
     "tailwind-merge": "^2.5.5",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.17.10",
+    "@types/nodemailer": "^8.0.1",
     "@types/pdf-parse": "^1.1.5",
     "@types/react": "^18.3.13",
     "@types/react-dom": "^18.3.1",

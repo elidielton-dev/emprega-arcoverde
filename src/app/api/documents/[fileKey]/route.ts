@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { getSession } from "@/lib/auth/session";
-import { readLocalFile } from "@/lib/storage/storage";
+import { readFile } from "@/lib/storage/storage";
 import { logAudit } from "@/lib/audit/audit";
 import { isAdmin } from "@/lib/auth/rbac";
 import { isPdfFile, isWordFile } from "@/lib/resume/files";
@@ -68,7 +68,7 @@ export async function GET(req: NextRequest, { params }: { params: { fileKey: str
     details: { fileKey, candidateId: doc.candidateId },
   });
 
-  const fileBuffer = await readLocalFile(fileKey);
+  const fileBuffer = await readFile(fileKey);
   if (!fileBuffer) {
     return new NextResponse("Arquivo indisponível no servidor", { status: 404 });
   }

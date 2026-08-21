@@ -26,7 +26,9 @@ export default async function ConteudosPage() {
         <div className="mx-auto mt-10 max-w-md rounded-lg border border-[#E6E8EB] bg-white p-10 text-center shadow-[0_1px_2px_rgba(28,20,16,0.04)]">
           <BookOpen className="mx-auto h-10 w-10 text-[#1C1410]" aria-hidden="true" />
           <h2 className="mt-3 text-base font-bold text-[#1C1410]">Nenhum artigo publicado no momento</h2>
-          <p className="mt-2 text-sm text-[#78716c]">Novas dicas serão adicionadas em breve.</p>
+          <p className="mt-2 text-sm text-[#78716c]">
+            Não há artigos publicados no momento. Consulte a equipe institucional se precisar de orientação.
+          </p>
         </div>
       ) : (
         <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">

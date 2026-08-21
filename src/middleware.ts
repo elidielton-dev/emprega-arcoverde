@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
+import { getAuthSecret } from "@/lib/auth/secret";
 
 const COOKIE_NAME = "ea_auth_session";
-const SECRET_KEY = process.env.AUTH_SECRET || "emprega-arcoverde-jwt-secret-key-2026";
-const encodedKey = new TextEncoder().encode(SECRET_KEY);
 
 type SessionLike = { role?: string };
 
@@ -11,6 +10,7 @@ async function readSession(req: NextRequest): Promise<SessionLike | null> {
   const token = req.cookies.get(COOKIE_NAME)?.value;
   if (!token) return null;
   try {
+    const encodedKey = new TextEncoder().encode(getAuthSecret());
     const { payload } = await jwtVerify(token, encodedKey, { algorithms: ["HS256"] });
     return payload as SessionLike;
   } catch {
@@ -20,10 +20,6 @@ async function readSession(req: NextRequest): Promise<SessionLike | null> {
 
 function isAdmin(role?: string) {
   return role === "ACA_ADMIN" || role === "MUNICIPAL_ADMIN" || role === "SUPER_ADMIN";
-}
-
-function isMunicipal(role?: string) {
-  return role === "MUNICIPAL_ADMIN" || role === "SUPER_ADMIN";
 }
 
 function loginRedirect(req: NextRequest) {
@@ -51,11 +47,18 @@ export async function middleware(req: NextRequest) {
     const allowed = isAdmin(session.role) || session.role === "ASSISTED_OPERATOR";
     if (!allowed) return loginRedirect(req);
 
+    // ACA e Prefeitura: cursos, indicadores, usuários, vagas, CMS, auditoria
+    // (Sala / ASSISTED_OPERATOR não acessa estes módulos)
     if (
       (pathname.startsWith("/admin/indicadores") ||
         pathname.startsWith("/admin/cursos") ||
-        pathname.startsWith("/admin/usuarios")) &&
-      !isMunicipal(session.role)
+        pathname.startsWith("/admin/usuarios") ||
+        pathname.startsWith("/admin/vagas") ||
+        pathname.startsWith("/admin/auditoria") ||
+        pathname.startsWith("/admin/conteudos") ||
+        pathname.startsWith("/admin/links-uteis") ||
+        pathname.startsWith("/admin/configuracoes")) &&
+      !isAdmin(session.role)
     ) {
       return NextResponse.redirect(new URL("/admin", req.url));
     }

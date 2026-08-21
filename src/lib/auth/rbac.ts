@@ -32,9 +32,13 @@ export function isAdmin(role?: string): boolean {
   return role === "ACA_ADMIN" || role === "MUNICIPAL_ADMIN" || role === "SUPER_ADMIN";
 }
 
-/** Prefeitura ou Super — cursos, indicadores, exclusão de currículo, usuários. */
+/** Prefeitura, Super ou ACA — governança ampliada (cursos, usuários, LGPD, indicadores). */
 export function isMunicipalOrSuperAdmin(role?: string): boolean {
-  return role === "MUNICIPAL_ADMIN" || role === "SUPER_ADMIN";
+  return (
+    role === "MUNICIPAL_ADMIN" ||
+    role === "SUPER_ADMIN" ||
+    role === "ACA_ADMIN"
+  );
 }
 
 /** ERS: só ACA/Prefeitura cadastram e gerenciam vagas (empresa não cria). */
@@ -62,18 +66,18 @@ export function canViewAllCandidates(role?: string): boolean {
   return isAdmin(role) || role === "ASSISTED_OPERATOR";
 }
 
-/** ERS RF048/RF060: só Prefeitura (e Super) gerencia cursos e indicadores. */
+/** Cursos: ACA e Prefeitura. */
 export function canManageCourses(role?: string): boolean {
-  return isMunicipalOrSuperAdmin(role);
+  return isAdmin(role);
 }
 
 export function canViewIndicators(role?: string): boolean {
-  return isMunicipalOrSuperAdmin(role);
+  return isAdmin(role);
 }
 
-/** ERS RF015/RF016: só Prefeitura exclui currículo. */
+/** Exclusão de currículo / LGPD: ACA e Prefeitura. */
 export function canDeleteCurriculum(role?: string): boolean {
-  return isMunicipalOrSuperAdmin(role);
+  return isAdmin(role);
 }
 
 /** Validação de currículo: ACA e Prefeitura. */
@@ -81,7 +85,17 @@ export function canValidateCurriculum(role?: string): boolean {
   return isAdmin(role);
 }
 
-/** Gestão de usuários administrativos. */
+/** Gestão de usuários administrativos: ACA e Prefeitura. */
 export function canManageUsers(role?: string): boolean {
-  return isMunicipalOrSuperAdmin(role);
+  return isAdmin(role);
+}
+
+/** Gestão de conteúdos e links: ACA e Prefeitura. */
+export function canManageContent(role?: string): boolean {
+  return isAdmin(role);
+}
+
+/** Configurações do portal: ACA e Prefeitura. */
+export function canManageSiteSettings(role?: string): boolean {
+  return isAdmin(role);
 }

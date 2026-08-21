@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Bell,
   Building2,
   CheckCircle2,
-  GitBranch,
   Save,
   ShieldAlert,
   Users,
@@ -24,10 +23,17 @@ export type CompanySettingsData = {
   isConfidentialDefault: boolean;
 };
 
+export type CompanyMemberRow = {
+  id: string;
+  role: string;
+  userId: string;
+  name: string;
+  email: string;
+};
+
 const TABS = [
   { id: "perfil", label: "Perfil da empresa", icon: Building2 },
   { id: "usuarios", label: "Usuários", icon: Users },
-  { id: "etapas", label: "Etapas do funil", icon: GitBranch },
   { id: "notificacoes", label: "Notificações", icon: Bell },
 ] as const;
 
@@ -35,29 +41,53 @@ type TabId = (typeof TABS)[number]["id"];
 
 type Props = {
   company: CompanySettingsData;
+  members: CompanyMemberRow[];
+  canManageMembers: boolean;
+  initialTab?: string;
   sucesso?: boolean;
   erro?: string;
 };
 
-export function SettingsBoard({ company, sucesso, erro }: Props) {
+export function SettingsBoard({
+  company,
+  members,
+  canManageMembers,
+  initialTab,
+  sucesso,
+  erro,
+}: Props) {
   const [tab, setTab] = useState<TabId>("perfil");
+
+  useEffect(() => {
+    if (initialTab === "usuarios" || initialTab === "notificacoes" || initialTab === "perfil") {
+      setTab(initialTab);
+    }
+  }, [initialTab]);
 
   return (
     <div className="space-y-5">
       <PageHeader
         title="Configurações"
-        description="Dados da empresa, preferências e (em breve) usuários e notificações."
+        description="Perfil da empresa, equipe e notificações."
       />
 
       {sucesso && (
         <div className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-800">
           <CheckCircle2 className="h-4 w-4" />
-          Dados atualizados com sucesso.
+          Alteração salva com sucesso.
         </div>
       )}
       {erro && (
         <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">
-          {erro}
+          {erro === "campos"
+            ? "Preencha nome e e-mail válidos."
+            : erro === "papel"
+              ? "Este e-mail já pertence a outro tipo de conta."
+              : erro === "ja_membro"
+                ? "Este usuário já é membro."
+                : erro === "auto"
+                  ? "Você não pode remover a si mesmo."
+                  : "Não foi possível concluir a operação."}
         </div>
       )}
 
@@ -134,18 +164,18 @@ export function SettingsBoard({ company, sucesso, erro }: Props) {
                   />
                 </label>
                 <label className="block text-xs font-bold text-[#57433C]">
-                  E-mail do RH
+                  E-mail
                   <input
-                    type="email"
                     name="email"
+                    type="email"
                     defaultValue={company.email || ""}
                     className="mt-1 w-full rounded-md border border-[#E6E8EB] p-3 text-sm outline-none focus:border-[#E65100]"
                   />
                 </label>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-3">
-                <label className="block text-xs font-bold text-[#57433C] sm:col-span-2">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block text-xs font-bold text-[#57433C]">
                   Endereço
                   <input
                     name="address"
@@ -164,7 +194,7 @@ export function SettingsBoard({ company, sucesso, erro }: Props) {
               </div>
 
               <label className="block text-xs font-bold text-[#57433C]">
-                Apresentação
+                Descrição
                 <textarea
                   name="description"
                   rows={4}
@@ -173,20 +203,22 @@ export function SettingsBoard({ company, sucesso, erro }: Props) {
                 />
               </label>
 
-              <label className="flex cursor-pointer items-center gap-2 rounded-md bg-[#FFF4EA] p-3 text-xs font-bold text-[#1C1410]">
+              <label className="flex items-start gap-2 text-xs font-semibold text-[#57433C]">
                 <input
                   type="checkbox"
                   name="isConfidentialDefault"
                   defaultChecked={company.isConfidentialDefault}
-                  className="rounded text-[#E65100]"
+                  className="mt-0.5 rounded"
                 />
-                <ShieldAlert className="h-4 w-4 text-[#E65100]" />
-                Preferir vagas confidenciais por padrão
+                <span className="inline-flex items-start gap-1.5">
+                  <ShieldAlert className="mt-0.5 h-3.5 w-3.5 text-[#E65100]" />
+                  Preferir vagas confidenciais por padrão
+                </span>
               </label>
 
               <button
                 type="submit"
-                className="inline-flex items-center gap-2 rounded-md bg-[#E65100] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#D84315]"
+                className="inline-flex items-center gap-2 rounded-md bg-[#E65100] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#D84315]"
               >
                 <Save className="h-4 w-4" />
                 Salvar configurações
@@ -195,43 +227,68 @@ export function SettingsBoard({ company, sucesso, erro }: Props) {
           )}
 
           {tab === "usuarios" && (
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold text-[#1C1410]">Usuários da empresa</h3>
-              <p className="text-sm text-[#78716c]">
-                Em breve: convite de recrutadores e permissões por papel. Hoje o acesso é gerenciado
-                pela ACA/Prefeitura no cadastro institucional.
-              </p>
-              <div className="rounded-md border border-dashed border-[#E6E8EB] bg-[#F4F5F7] px-4 py-8 text-center text-xs text-[#78716c]">
-                Gestão de usuários ainda não disponível neste MVP.
+            <div className="space-y-5">
+              <div>
+                <h3 className="text-sm font-bold text-[#1C1410]">Usuários da empresa</h3>
+                <p className="mt-1 text-xs text-[#78716c]">
+                  Convide recrutadores com acesso ao painel desta empresa.
+                </p>
               </div>
-            </div>
-          )}
 
-          {tab === "etapas" && (
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold text-[#1C1410]">Etapas do funil</h3>
-              <p className="text-sm text-[#78716c]">
-                O funil padrão do Emprega Arcoverde é fixo no MVP para padronizar a triagem.
-              </p>
-              <ol className="space-y-2">
-                {[
-                  "Novos",
-                  "Em triagem / Contato",
-                  "Entrevista",
-                  "Oferta / Aprovado",
-                  "Não selecionado",
-                ].map((step, i) => (
-                  <li
-                    key={step}
-                    className="flex items-center gap-3 rounded-md border border-[#EEF2F0] px-3 py-2.5 text-sm"
-                  >
-                    <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#FFF4EA] text-[11px] font-black text-[#E65100]">
-                      {i + 1}
-                    </span>
-                    <span className="font-semibold text-[#1C1410]">{step}</span>
+              <ul className="divide-y divide-[#E6E8EB] rounded-md border border-[#E6E8EB]">
+                {members.map((m) => (
+                  <li key={m.id} className="flex items-center justify-between gap-3 px-3 py-2.5 text-xs">
+                    <div className="min-w-0">
+                      <p className="truncate font-bold text-[#1C1410]">{m.name}</p>
+                      <p className="truncate text-[#78716c]">
+                        {m.email} · {m.role}
+                      </p>
+                    </div>
+                    {canManageMembers && (
+                      <form action="/api/company/members" method="POST">
+                        <input type="hidden" name="action" value="REMOVE" />
+                        <input type="hidden" name="memberId" value={m.id} />
+                        <button type="submit" className="font-bold text-red-600 hover:underline">
+                          Remover
+                        </button>
+                      </form>
+                    )}
                   </li>
                 ))}
-              </ol>
+              </ul>
+
+              {canManageMembers ? (
+                <form action="/api/company/members" method="POST" className="grid gap-3 sm:grid-cols-2">
+                  <input type="hidden" name="action" value="INVITE" />
+                  <input
+                    name="name"
+                    required
+                    placeholder="Nome"
+                    className="rounded-md border border-[#E6E8EB] px-3 py-2 text-sm"
+                  />
+                  <input
+                    name="email"
+                    type="email"
+                    required
+                    placeholder="E-mail"
+                    className="rounded-md border border-[#E6E8EB] px-3 py-2 text-sm"
+                  />
+                  <select name="role" className="rounded-md border border-[#E6E8EB] px-3 py-2 text-sm">
+                    <option value="MEMBER">Membro</option>
+                    <option value="ADMIN">Admin</option>
+                  </select>
+                  <button
+                    type="submit"
+                    className="rounded-md bg-[#E65100] px-3 py-2 text-xs font-bold text-white hover:bg-[#D84315]"
+                  >
+                    Convidar
+                  </button>
+                </form>
+              ) : (
+                <p className="text-xs text-[#78716c]">
+                  Somente OWNER/ADMIN podem convidar ou remover membros.
+                </p>
+              )}
             </div>
           )}
 
@@ -239,7 +296,7 @@ export function SettingsBoard({ company, sucesso, erro }: Props) {
             <div className="space-y-3">
               <h3 className="text-sm font-bold text-[#1C1410]">Notificações</h3>
               <p className="text-sm text-[#78716c]">
-                Acompanhe novas candidaturas e avisos de moderação pelo sino no topo do painel.
+                Acompanhe novas candidaturas e avisos pelo sino no topo do painel.
               </p>
               <SecondaryButton href="/empresa/notificacoes" className="w-full sm:w-auto">
                 Abrir caixa de notificações

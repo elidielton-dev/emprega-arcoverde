@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { getSession } from "@/lib/auth/session";
-import { isMunicipalOrSuperAdmin } from "@/lib/auth/rbac";
+import { canDeleteCurriculum } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/audit/audit";
 import { formRedirect } from "@/lib/http/form-redirect";
+import { notifyUser } from "@/lib/notifications/notify";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
-  if (!isMunicipalOrSuperAdmin(session.role)) {
-    return NextResponse.json({ error: "Acesso restrito à gestão municipal" }, { status: 403 });
+  if (!canDeleteCurriculum(session.role)) {
+    return NextResponse.json({ error: "Sem permissão para processar exclusão LGPD" }, { status: 403 });
   }
 
   const formData = await req.formData();
@@ -24,10 +25,41 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: "Solicitação pendente não encontrada" }, { status: 404 });
   }
 
+  const subjectUserId = request.userId;
+
   await prisma.$transaction(async (tx) => {
     if (action === "PROCESS") {
-      await tx.candidateProfile.deleteMany({ where: { userId: request.userId } });
+      const profile = await tx.candidateProfile.findUnique({
+        where: { userId: subjectUserId },
+        include: { documents: true },
+      });
+
+      if (profile) {
+        await tx.candidateDocument.deleteMany({ where: { candidateId: profile.id } });
+        await tx.candidateProfile.delete({ where: { id: profile.id } });
+      }
+
+      await tx.notification.deleteMany({ where: { userId: subjectUserId } });
+      await tx.notificationPreference.deleteMany({ where: { userId: subjectUserId } });
+      await tx.consent.deleteMany({ where: { userId: subjectUserId } });
+
+      const anonEmail = `anonimizado-${subjectUserId.slice(-8)}@removido.local`;
+      await tx.user.update({
+        where: { id: subjectUserId },
+        data: {
+          name: "Titular anonimizado (LGPD)",
+          email: anonEmail,
+          passwordHash: null,
+          supabaseUserId: null,
+          avatarUrl: null,
+          resetPasswordToken: null,
+          resetPasswordExpires: null,
+          emailVerifyToken: null,
+          isEmailVerified: false,
+        },
+      });
     }
+
     await tx.deletionRequest.update({
       where: { id: request.id },
       data: {
@@ -43,23 +75,18 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     action: action === "PROCESS" ? "DATA_DELETION_PROCESSED" : "DATA_DELETION_REJECTED",
     resourceType: "DeletionRequest",
     resourceId: request.id,
-    details: { subjectUserId: request.userId, notes },
+    details: { subjectUserId, notes },
   });
 
-  const { notifyUser } = await import("@/lib/notifications/notify");
-  await notifyUser({
-    userId: request.userId,
-    title:
-      action === "PROCESS"
-        ? "Solicitação LGPD processada"
-        : "Solicitação LGPD não atendida",
-    message:
-      action === "PROCESS"
-        ? "Sua solicitação de exclusão de dados foi processada."
-        : `Sua solicitação de exclusão não foi processada.${notes ? ` ${notes}` : ""}`,
-    type: "SYSTEM",
-    link: "/painel/privacidade",
-  });
+  if (action !== "PROCESS") {
+    await notifyUser({
+      userId: subjectUserId,
+      title: "Solicitação LGPD não atendida",
+      message: `Sua solicitação de exclusão não foi processada.${notes ? ` ${notes}` : ""}`,
+      type: "SYSTEM",
+      link: "/painel/privacidade",
+    });
+  }
 
   return formRedirect(new URL("/admin/auditoria?sucesso=solicitacao_processada", req.url));
 }

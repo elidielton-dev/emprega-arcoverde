@@ -14,5 +14,5 @@ Este documento valida todos os critérios de aceite obrigatórios definidos no e
 - [x] **10. Cursos de Qualificação**: Catálogo administrável com registro de métricas de clique em inscrições externas e expiração automática.
 - [x] **11. Painel de Indicadores**: Métricas municipais agregadas e gráficos consolidados sem expor dados pessoais sensíveis, com exportação CSV auditada.
 - [x] **12. Tarefas Agendadas (Cron)**: Rota `/api/cron/jobs` protegida por `CRON_SECRET` para encerramento de vagas vencidas e expiração de cursos.
-- [x] **13. E-mail e WhatsApp**: Adaptadores funcionais com driver de desenvolvimento/mock e flag segura desativada por padrão para WhatsApp oficial.
+- [~] **13. E-mail e WhatsApp**: E-mail via SMTP Prefeitura (`SMTP_*`); mock só sem SMTP. WhatsApp oficial **não** faz parte do produto — só links `wa.me`.
 - [x] **14. Qualidade e Testes**: Testes automatizados cobrindo algoritmo de compatibilidade e segurança de vagas confidenciais; build sem erros de TypeScript.

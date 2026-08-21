@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { formRedirect } from "@/lib/http/form-redirect";
 import { prisma } from "@/lib/db/prisma";
 import { getSession } from "@/lib/auth/session";
-import { saveFileLocally } from "@/lib/storage/storage";
+import { saveFile } from "@/lib/storage/storage";
 import { logAudit } from "@/lib/audit/audit";
 import { parseResumeFile } from "@/lib/matching/resume-parser";
 
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const stored = await saveFileLocally(buffer, file.name, file.type || "application/octet-stream");
+    const stored = await saveFile(buffer, file.name, file.type || "application/octet-stream");
 
     const doc = await prisma.candidateDocument.create({
       data: {

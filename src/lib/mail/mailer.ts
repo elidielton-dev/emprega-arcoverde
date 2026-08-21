@@ -1,3 +1,7 @@
+import nodemailer from "nodemailer";
+import type { Transporter } from "nodemailer";
+import { Resend } from "resend";
+
 export interface SendEmailOptions {
   to: string;
   subject: string;
@@ -5,13 +9,71 @@ export interface SendEmailOptions {
   html: string;
 }
 
-export async function sendEmail({ to, subject, html, text }: SendEmailOptions): Promise<{ success: boolean; messageId: string }> {
-  const from = process.env.EMAIL_FROM || "nao-responda@emprega.arcoverde.pe.gov.br";
-  const apiKey = process.env.EMAIL_PROVIDER_API_KEY;
+function resendApiKey() {
+  return (
+    process.env.RESEND_API_KEY?.trim() ||
+    process.env.EMAIL_PROVIDER_API_KEY?.trim() ||
+    ""
+  );
+}
 
-  if (process.env.NODE_ENV === "development" || !apiKey) {
+function resendConfigured() {
+  return Boolean(resendApiKey());
+}
+
+function smtpConfigured() {
+  return Boolean(
+    process.env.SMTP_HOST?.trim() &&
+      process.env.SMTP_USER?.trim() &&
+      process.env.SMTP_PASS?.trim(),
+  );
+}
+
+function emailProvider(): "resend" | "smtp" | "mock" {
+  if (process.env.EMAIL_MOCK === "true") return "mock";
+  if (resendConfigured()) return "resend";
+  if (smtpConfigured()) return "smtp";
+  return "mock";
+}
+
+let transporter: Transporter | null = null;
+let resendClient: Resend | null = null;
+
+function getTransporter(): Transporter {
+  if (transporter) return transporter;
+  const host = process.env.SMTP_HOST!.trim();
+  const port = Number(process.env.SMTP_PORT || "587");
+  const secure = process.env.SMTP_SECURE === "true" || port === 465;
+  transporter = nodemailer.createTransport({
+    host,
+    port,
+    secure,
+    auth: {
+      user: process.env.SMTP_USER!.trim(),
+      pass: process.env.SMTP_PASS!.trim(),
+    },
+  });
+  return transporter;
+}
+
+function getResend(): Resend {
+  if (!resendClient) resendClient = new Resend(resendApiKey());
+  return resendClient;
+}
+
+export async function sendEmail({
+  to,
+  subject,
+  html,
+  text,
+}: SendEmailOptions): Promise<{ success: boolean; messageId: string }> {
+  const from =
+    process.env.EMAIL_FROM?.trim() || "Emprega Arcoverde <onboarding@resend.dev>";
+  const provider = emailProvider();
+
+  if (provider === "mock") {
     console.log("=================================================");
-    console.log("📧 [MOCK EMAIL DISPATCH - EMPREGA ARCOVERDE]");
+    console.log("📧 [MOCK EMAIL — configure RESEND_API_KEY ou SMTP_*]");
     console.log(`De: ${from}`);
     console.log(`Para: ${to}`);
     console.log(`Assunto: ${subject}`);
@@ -20,17 +82,53 @@ export async function sendEmail({ to, subject, html, text }: SendEmailOptions): 
     return { success: true, messageId: `mock-${Date.now()}` };
   }
 
-  // Em produção com API Key configurada (e.g. Resend ou SMTP):
+  if (provider === "resend") {
+    try {
+      const { data, error } = await getResend().emails.send({
+        from,
+        to: [to],
+        subject,
+        html,
+        text: text || undefined,
+      });
+      if (error) {
+        console.error("Falha no envio Resend:", error);
+        return { success: false, messageId: "" };
+      }
+      return {
+        success: true,
+        messageId: String(data?.id || `resend-${Date.now()}`),
+      };
+    } catch (error) {
+      console.error("Falha no envio Resend:", error);
+      return { success: false, messageId: "" };
+    }
+  }
+
   try {
-    // Ponto de integração para Resend/SendGrid/SES
-    return { success: true, messageId: `prod-${Date.now()}` };
+    const info = await getTransporter().sendMail({
+      from,
+      to,
+      subject,
+      text: text || undefined,
+      html,
+    });
+    return {
+      success: true,
+      messageId: String(info.messageId || `smtp-${Date.now()}`),
+    };
   } catch (error) {
-    console.error("Falha no envio de email:", error);
+    console.error("Falha no envio de e-mail SMTP:", error);
     return { success: false, messageId: "" };
   }
 }
 
-export function generateApplicationConfirmationEmail(jobTitle: string, candidateName: string, isConfidential: boolean, companyName: string) {
+export function generateApplicationConfirmationEmail(
+  jobTitle: string,
+  candidateName: string,
+  isConfidential: boolean,
+  companyName: string,
+) {
   const displayedCompany = isConfidential ? "Empresa Confidencial" : companyName;
   return `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #feeddf; border-radius: 8px;">

@@ -3,9 +3,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { getSession } from "@/lib/auth/session";
-import { Shield, ArrowLeft, Download, Trash2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Shield, ArrowLeft, Download, Trash2, AlertTriangle, Bell } from "lucide-react";
+import { getOrCreateNotificationPref } from "@/lib/notifications/preferences";
 
-export default async function CandidatoPrivacidadePage() {
+export default async function CandidatoPrivacidadePage({
+  searchParams,
+}: {
+  searchParams: { sucesso?: string };
+}) {
   const session = await getSession();
   if (!session || session.role !== "CANDIDATE") {
     redirect("/entrar");
@@ -15,89 +20,133 @@ export default async function CandidatoPrivacidadePage() {
     where: { id: session.userId },
     include: {
       consents: true,
-      deletionRequests: true,
+      deletionRequests: { orderBy: { requestedAt: "desc" } },
     },
   });
 
-  if (!user) {
-    redirect("/entrar");
-  }
+  if (!user) redirect("/entrar");
+
+  const pref = await getOrCreateNotificationPref(session.userId);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <div className="mx-auto max-w-4xl space-y-8 px-4 py-10 sm:px-6 lg:px-8">
       <div>
         <Link
           href="/painel"
-          className="inline-flex items-center gap-2 text-xs text-[#78716c] hover:text-[#E65100] mb-2"
+          className="mb-2 inline-flex items-center gap-2 text-xs text-[#78716c] hover:text-[#E65100]"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Voltar ao painel do candidato</span>
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Voltar ao painel
         </Link>
-        <h1 className="text-2xl sm:text-3xl font-black text-[#2E221F] tracking-tight">
-          Privacidade & Gestão de Dados (LGPD)
+        <h1 className="text-2xl font-black tracking-tight text-[#1C1410] sm:text-3xl">
+          Privacidade & LGPD
         </h1>
         <p className="text-xs text-[#78716c]">
-          Exercite seus direitos previstos na Lei Geral de Proteção de Dados: consulte seus consentimentos e solicite a exclusão de sua conta.
+          Consentimentos, preferências de aviso, exportação e exclusão de dados.
         </p>
       </div>
 
-      {/* Histórico de Consentimentos */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#FEEDDF] shadow-xs space-y-4">
-        <h2 className="text-base font-bold text-[#2E221F] flex items-center gap-2 border-b border-[#FEEDDF] pb-3">
-          <Shield className="w-4 h-4 text-[#E65100]" />
-          <span>Consentimentos Registrados</span>
-        </h2>
+      {searchParams.sucesso && (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-800">
+          Preferências atualizadas.
+        </div>
+      )}
 
-        <div className="space-y-3">
-          {user.consents.map((c) => (
-            <div
-              key={c.id}
-              className="p-3.5 rounded-2xl bg-[#FFF8F2] border border-[#FEEDDF] flex items-center justify-between text-xs"
-            >
-              <div>
-                <strong className="text-[#2E221F] block">
-                  {c.type === "TERMS" && "Aceite dos Termos de Uso"}
-                  {c.type === "PRIVACY" && "Aceite da Política de Privacidade"}
-                  {c.type === "EMAIL_COMMUNICATION" && "Consentimento para Notificações por E-mail"}
-                  {c.type === "WHATSAPP_COMMUNICATION" && "Consentimento para Notificações por WhatsApp"}
-                  {c.type === "ASSISTED_SERVICE_CONSENT" && "Consentimento para Atendimento Presencial Assistido"}
-                </strong>
-                <span className="text-[11px] text-[#78716c]">
-                  Registrado em {new Date(c.acceptedAt).toLocaleDateString("pt-BR")} às {new Date(c.acceptedAt).toLocaleTimeString("pt-BR")}
+      <div className="space-y-4 rounded-lg border border-[#E6E8EB] bg-white p-6 shadow-[0_1px_2px_rgba(28,20,16,0.04)]">
+        <h2 className="flex items-center gap-2 border-b border-[#E6E8EB] pb-3 text-base font-bold text-[#1C1410]">
+          <Download className="h-4 w-4 text-[#E65100]" />
+          Portabilidade — baixar meus dados
+        </h2>
+        <p className="text-xs text-[#78716c]">
+          Gere um arquivo JSON com perfil, currículo, candidaturas e consentimentos.
+        </p>
+        <a
+          href="/api/candidate/export"
+          className="inline-flex items-center gap-2 rounded-md bg-[#1C1410] px-4 py-2.5 text-xs font-bold text-white hover:bg-black"
+        >
+          <Download className="h-3.5 w-3.5" />
+          Baixar meus dados
+        </a>
+      </div>
+
+      <div className="space-y-4 rounded-lg border border-[#E6E8EB] bg-white p-6 shadow-[0_1px_2px_rgba(28,20,16,0.04)]">
+        <h2 className="flex items-center gap-2 border-b border-[#E6E8EB] pb-3 text-base font-bold text-[#1C1410]">
+          <Bell className="h-4 w-4 text-[#E65100]" />
+          Preferências de notificação
+        </h2>
+        <form action="/api/notifications/preferences" method="POST" className="space-y-3 text-xs">
+          <label className="flex items-center gap-2 font-semibold text-[#57433C]">
+            <input type="checkbox" name="emailEnabled" defaultChecked={pref.emailEnabled} className="rounded" />
+            Receber e-mails
+          </label>
+          <label className="flex items-center gap-2 font-semibold text-[#57433C]">
+            <input type="checkbox" name="statusAlerts" defaultChecked={pref.statusAlerts} className="rounded" />
+            Alertas de status de candidatura
+          </label>
+          <label className="flex items-center gap-2 font-semibold text-[#57433C]">
+            <input type="checkbox" name="jobAlerts" defaultChecked={pref.jobAlerts} className="rounded" />
+            Alertas de vagas / oportunidades
+          </label>
+          <button
+            type="submit"
+            className="rounded-md bg-[#E65100] px-4 py-2 text-xs font-bold text-white hover:bg-[#D84315]"
+          >
+            Salvar preferências
+          </button>
+        </form>
+      </div>
+
+      <div className="space-y-4 rounded-lg border border-[#E6E8EB] bg-white p-6 shadow-[0_1px_2px_rgba(28,20,16,0.04)]">
+        <h2 className="flex items-center gap-2 border-b border-[#E6E8EB] pb-3 text-base font-bold text-[#1C1410]">
+          <Shield className="h-4 w-4 text-[#E65100]" />
+          Consentimentos registrados
+        </h2>
+        <div className="space-y-2">
+          {user.consents.length === 0 ? (
+            <p className="text-xs text-[#78716c]">Nenhum consentimento registrado.</p>
+          ) : (
+            user.consents.map((c) => (
+              <div
+                key={c.id}
+                className="flex items-center justify-between rounded-md border border-[#E6E8EB] bg-[#F4F5F7] px-3 py-2.5 text-xs"
+              >
+                <div>
+                  <strong className="block text-[#1C1410]">{c.type}</strong>
+                  <span className="text-[11px] text-[#78716c]">
+                    {new Date(c.acceptedAt).toLocaleString("pt-BR")}
+                  </span>
+                </div>
+                <span className="rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                  {c.accepted ? "Ativo" : "Revogado"}
                 </span>
               </div>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                Ativo
-              </span>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
-      {/* Solicitação de Exclusão Definitiva */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-red-200 shadow-xs space-y-4">
+      <div className="space-y-4 rounded-lg border border-red-200 bg-white p-6 shadow-[0_1px_2px_rgba(28,20,16,0.04)]">
         <div className="flex items-center gap-2 text-red-700">
-          <AlertTriangle className="w-5 h-5 text-red-600" />
-          <h2 className="text-base font-bold">Exclusão e Anonimização de Dados</h2>
+          <AlertTriangle className="h-5 w-5" />
+          <h2 className="text-base font-bold">Exclusão e anonimização</h2>
         </div>
-
-        <p className="text-xs text-[#57433C] leading-relaxed">
-          Caso deseje encerrar seu perfil e remover seu currículo e candidaturas do banco do Emprega Arcoverde, seus dados pessoais serão desvinculados em conformidade com a LGPD.
+        <p className="text-xs leading-relaxed text-[#57433C]">
+          Ao processar, a Prefeitura remove o currículo e anonimiza a conta (e-mail e nome deixam de
+          identificar você).
         </p>
-
-        {user.deletionRequests.length > 0 ? (
-          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
-            <strong>Solicitação registrada em {new Date(user.deletionRequests[0].requestedAt).toLocaleDateString("pt-BR")}.</strong> A administração municipal processará a exclusão em até 15 dias úteis.
+        {user.deletionRequests.some((d) => d.status === "PENDING") ? (
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
+            Solicitação pendente registrada. A gestão municipal processará em até 15 dias úteis.
           </div>
         ) : (
           <form action="/api/candidate/privacy" method="POST">
             <input type="hidden" name="action" value="REQUEST_DELETION" />
             <button
               type="submit"
-              className="bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs px-5 py-2.5 rounded-xl border border-red-200 transition flex items-center gap-2"
+              className="inline-flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-bold text-red-700 hover:bg-red-100"
             >
-              <Trash2 className="w-4 h-4" />
-              <span>Solicitar Exclusão da Minha Conta</span>
+              <Trash2 className="h-4 w-4" />
+              Solicitar exclusão da minha conta
             </button>
           </form>
         )}

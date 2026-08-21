@@ -2,7 +2,9 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import {
   ROLE_LABELS,
+  canManageContent,
   canManageCourses,
+  canManageSiteSettings,
   canManageUsers,
   canPerformAssistedService,
   canRegisterCompany,
@@ -44,7 +46,6 @@ function orgFromRole(role: string): { orgLabel: string; orgHint: string } {
 
 /**
  * Menu filtrado por papel.
- * Conteúdos / Links úteis / Configurações ficam fora até terem gestão real.
  */
 export function buildAdminNav(role: string): AdminNavItem[] {
   const items: AdminNavItem[] = [
@@ -66,6 +67,13 @@ export function buildAdminNav(role: string): AdminNavItem[] {
       label: "Atendimento assistido",
       group: "operation",
     });
+  }
+  if (canManageContent(role)) {
+    items.push({ href: "/admin/conteudos", label: "Conteúdos", group: "governance" });
+    items.push({ href: "/admin/links-uteis", label: "Links úteis", group: "governance" });
+  }
+  if (canManageSiteSettings(role)) {
+    items.push({ href: "/admin/configuracoes", label: "Configurações", group: "governance" });
   }
   if (canManageCourses(role)) {
     items.push({ href: "/admin/cursos", label: "Cursos", group: "governance" });

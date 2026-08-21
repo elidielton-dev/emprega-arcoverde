@@ -11,7 +11,6 @@ import {
   ChevronRight,
   CalendarDays,
   X,
-  Download,
 } from "lucide-react";
 import { getMatchBandLabel } from "@/lib/matching/calculator";
 import { FunnelCard, PageHeader, SurfaceCard } from "@/components/company/ui";
@@ -149,15 +148,12 @@ export function CandidatesBoard({ rows, jobs, initialVaga, initialEtapa, initial
         title="Candidatos"
         description="Gerencie inscrições, triagem ATS e etapas do processo seletivo."
         actions={
-          <button
-            type="button"
-            disabled
-            title="Em breve"
-            className="inline-flex items-center gap-2 rounded-md border border-[#E6E8EB] bg-white px-3.5 py-2 text-xs font-bold text-[#78716c]"
+          <a
+            href="/api/company/candidates/export"
+            className="inline-flex items-center gap-2 rounded-md border border-[#E6E8EB] bg-white px-3.5 py-2 text-xs font-bold text-[#1C1410] hover:bg-[#F4F5F7]"
           >
-            <Download className="h-3.5 w-3.5" />
-            Exportar
-          </button>
+            Exportar CSV
+          </a>
         }
       />
 

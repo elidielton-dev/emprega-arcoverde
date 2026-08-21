@@ -4,7 +4,8 @@ import { getSession } from "@/lib/auth/session";
 import { logAudit } from "@/lib/audit/audit";
 import { isAdmin } from "@/lib/auth/rbac";
 import { formRedirect } from "@/lib/http/form-redirect";
-import { generateInterviewInviteEmail, sendEmail } from "@/lib/mail/mailer";
+import { generateInterviewInviteEmail } from "@/lib/mail/mailer";
+import { sendEmailIfAllowed } from "@/lib/notifications/preferences";
 
 const ALLOWED_STATUSES = [
   "SUBMITTED",
@@ -127,7 +128,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     });
 
     if (newStatus === "INTERVIEW_SCHEDULED" && scheduledAt) {
-      await sendEmail({
+      await sendEmailIfAllowed(application.candidate.userId, {
         to: application.candidate.user.email,
         subject: `Entrevista agendada: ${application.job.title}`,
         html: generateInterviewInviteEmail(
@@ -137,6 +138,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           location,
           instructions,
         ),
+        kind: "status",
       });
     }
 

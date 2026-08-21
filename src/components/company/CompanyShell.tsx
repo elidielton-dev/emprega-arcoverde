@@ -14,7 +14,6 @@ import {
   Menu,
   X,
   LogOut,
-  ChevronDown,
 } from "lucide-react";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
@@ -79,18 +78,12 @@ export function CompanyShell({
         >
           <BrandLogo variant="compact" isLink={false} className="justify-center" />
         </Link>
-        <button
-          type="button"
-          className="flex w-full items-center justify-between gap-2 rounded-md border border-white/15 bg-white/5 px-3 py-2.5 text-left"
-        >
-          <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#A8A29E]">
-              Empresa
-            </p>
-            <p className="truncate text-sm font-bold text-white">{companyName}</p>
-          </div>
-          <ChevronDown className="h-4 w-4 shrink-0 text-[#A8A29E]" />
-        </button>
+        <div className="rounded-md border border-white/15 bg-white/5 px-3 py-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#A8A29E]">
+            Empresa
+          </p>
+          <p className="truncate text-sm font-bold text-white">{companyName}</p>
+        </div>
       </div>
 
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-2.5 py-4">

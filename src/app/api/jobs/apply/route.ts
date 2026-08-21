@@ -3,7 +3,8 @@ import { prisma } from "@/lib/db/prisma";
 import { getSession } from "@/lib/auth/session";
 import { scoreApplicationAgainstJob, serializeAtsResult } from "@/lib/matching/ats";
 import { logAudit } from "@/lib/audit/audit";
-import { sendEmail, generateApplicationConfirmationEmail } from "@/lib/mail/mailer";
+import { generateApplicationConfirmationEmail } from "@/lib/mail/mailer";
+import { sendEmailIfAllowed } from "@/lib/notifications/preferences";
 import { formRedirect } from "@/lib/http/form-redirect";
 
 export async function POST(req: NextRequest) {
@@ -136,10 +137,11 @@ export async function POST(req: NextRequest) {
         job.company.tradeName || job.company.name,
       );
 
-      await sendEmail({
+      await sendEmailIfAllowed(session.userId, {
         to: session.email,
         subject: `Candidatura confirmada: ${job.title}`,
         html: emailHtml,
+        kind: "status",
       });
     }
 

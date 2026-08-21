@@ -2,9 +2,11 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import type { NextResponse } from "next/server";
 import { UserRole } from "./rbac";
+import { getAuthSecret } from "./secret";
 
-const SECRET_KEY = process.env.AUTH_SECRET || "emprega-arcoverde-jwt-secret-key-2026";
-const encodedKey = new TextEncoder().encode(SECRET_KEY);
+function encodedKey() {
+  return new TextEncoder().encode(getAuthSecret());
+}
 
 export interface SessionPayload {
   userId: string;
@@ -22,12 +24,12 @@ export async function signToken(payload: SessionPayload): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
-    .sign(encodedKey);
+    .sign(encodedKey());
 }
 
 export async function verifyToken(token: string): Promise<SessionPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, encodedKey, {
+    const { payload } = await jwtVerify(token, encodedKey(), {
       algorithms: ["HS256"],
     });
     return payload as unknown as SessionPayload;

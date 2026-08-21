@@ -34,7 +34,7 @@ export default async function CursosPage() {
           <GraduationCap className="mx-auto h-12 w-12 text-[#E65100]" />
           <h3 className="text-base font-bold text-[#1C1410]">Nenhum curso com inscrições abertas no momento</h3>
           <p className="text-xs text-[#78716c]">
-            Novas turmas gratuitas serão anunciadas em breve. Fique atento às nossas atualizações.
+            Não há turmas com inscrição aberta no momento. Acompanhe o portal ou a Sala do Empreendedor.
           </p>
         </div>
       ) : (

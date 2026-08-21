@@ -5,8 +5,9 @@ import React from "react";
 const DEMOS = [
   { email: "candidato.demo@demo.com", password: "senha123", label: "Candidato" },
   { email: "empresa.comercio@demo.com", password: "senha123", label: "Empresa" },
-  { email: "operador.sala@demo.com", password: "senha123", label: "Operador" },
-  { email: "admin.prefeitura@demo.com", password: "senha123", label: "Gestão" },
+  { email: "operador.sala@demo.com", password: "senha123", label: "Sala" },
+  { email: "admin.aca@demo.com", password: "senha123", label: "ACA" },
+  { email: "admin.prefeitura@demo.com", password: "senha123", label: "Prefeitura" },
 ] as const;
 
 export function DemoAccounts() {

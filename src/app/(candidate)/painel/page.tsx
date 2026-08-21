@@ -14,6 +14,7 @@ import {
   AlertCircle,
   Building,
   Upload,
+  Shield,
 } from "lucide-react";
 
 export default async function PainelCandidatoPage() {
@@ -63,8 +64,8 @@ export default async function PainelCandidatoPage() {
   if (profile.documents?.length) completeness += 15;
   completeness = Math.min(100, completeness);
 
-  // Buscar sugestões de vagas compatíveis
-  const recommendedJobs = await prisma.job.findMany({
+  // Sugestões por aderência ATS (score não exibido ao candidato — decisão produto)
+  const candidatesPool = await prisma.job.findMany({
     where: {
       status: "PUBLISHED",
       OR: [
@@ -79,8 +80,23 @@ export default async function PainelCandidatoPage() {
       company: { select: { name: true, tradeName: true } },
       category: true,
     },
-    take: 3,
+    orderBy: { createdAt: "desc" },
+    take: 12,
   });
+
+  const { scoreApplicationAgainstJob } = await import("@/lib/matching/ats");
+  const scored = await Promise.all(
+    candidatesPool.map(async (job) => {
+      try {
+        const result = await scoreApplicationAgainstJob(profile, job);
+        return { job, score: result.score };
+      } catch {
+        return { job, score: 0 };
+      }
+    }),
+  );
+  scored.sort((a, b) => b.score - a.score);
+  const recommendedJobs = scored.slice(0, 3).map((s) => s.job);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
@@ -124,7 +140,7 @@ export default async function PainelCandidatoPage() {
       </div>
 
       {/* Menu Rápido em Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <Link
           href="/painel/curriculo"
           className="bg-white p-5 rounded-2xl border border-[#FEEDDF] hover:border-[#E65100] hover:shadow-sm transition flex flex-col justify-between group"
@@ -161,6 +177,19 @@ export default async function PainelCandidatoPage() {
               Dados Pessoais
             </h3>
             <p className="text-xs text-[#78716c]">Contato e consentimento</p>
+          </div>
+        </Link>
+
+        <Link
+          href="/painel/privacidade"
+          className="bg-white p-5 rounded-2xl border border-[#FEEDDF] hover:border-[#E65100] hover:shadow-sm transition flex flex-col justify-between group"
+        >
+          <Shield className="w-6 h-6 text-[#E65100] mb-2" />
+          <div>
+            <h3 className="font-bold text-sm text-[#2E221F] group-hover:text-[#E65100]">
+              Privacidade
+            </h3>
+            <p className="text-xs text-[#78716c]">LGPD e exportação</p>
           </div>
         </Link>
 
