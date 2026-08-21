@@ -7,7 +7,6 @@ import {
   FileText,
   Briefcase,
   GraduationCap,
-  Award,
   Upload,
   CheckCircle2,
   AlertCircle,
@@ -20,6 +19,7 @@ interface CurriculoPageProps {
   searchParams: {
     sucesso?: string;
     erro?: string;
+    aviso?: string;
     exp?: string;
     edu?: string;
     cursos?: string;
@@ -84,13 +84,17 @@ export default async function CurriculoPage({ searchParams }: CurriculoPageProps
         <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-600" />
           <span>
-            {searchParams.sucesso === "importado"
-              ? `Currículo importado do LinkedIn: ${searchParams.exp || 0} experiência(s), ${searchParams.edu || 0} formação(ões), ${searchParams.cursos || 0} curso(s)/certificado(s), ${searchParams.skills || 0} competência(s). Revise e ajuste se precisar.`
-              : searchParams.sucesso === "linkedin_anexo"
-                ? "Anexo do LinkedIn lido e aplicado ao currículo estruturado. Revise os dados abaixo."
+            {searchParams.sucesso === "preenchido" || searchParams.sucesso === "linkedin_anexo"
+              ? "Currículo enviado e formulário preenchido automaticamente. Revise os campos abaixo e clique em Salvar se quiser ajustar."
+              : searchParams.sucesso === "importado"
+                ? `Currículo importado: ${searchParams.exp || 0} experiência(s), ${searchParams.edu || 0} formação(ões). Revise e salve.`
                 : searchParams.sucesso === "anexo_enviado"
-                  ? "Anexo enviado com sucesso."
-                  : "Currículo atualizado com sucesso! Nova versão histórica registrada."}
+                  ? searchParams.aviso === "sem_texto"
+                    ? "Anexo salvo. Imagens não preenchem o formulário — use PDF ou DOCX para preenchimento automático."
+                    : searchParams.aviso === "parse_falhou"
+                      ? "Anexo salvo, mas não foi possível ler o texto. Preencha o formulário manualmente."
+                      : "Anexo enviado. Se o PDF tiver texto, o formulário acima deve estar atualizado — atualize a página se não aparecer."
+                  : "Currículo atualizado com sucesso!"}
           </span>
         </div>
       )}
@@ -103,14 +107,64 @@ export default async function CurriculoPage({ searchParams }: CurriculoPageProps
               ? "Selecione um arquivo antes de enviar."
               : searchParams.erro === "arquivo_muito_grande"
                 ? "Arquivo acima de 10 MB."
-                : "Não foi possível enviar o currículo. Tente novamente."}
+                : "Não foi possível enviar o currículo. Tente PDF ou DOCX novamente."}
           </span>
         </div>
       )}
 
+      {/* Upload primeiro → preenche o formulário abaixo */}
+      <div className="bg-white p-6 sm:p-10 rounded-3xl border border-[#FEEDDF] shadow-xs space-y-6">
+        <div className="border-b border-[#FEEDDF] pb-3">
+          <h2 className="text-base font-bold text-[#2E221F] flex items-center gap-2">
+            <Upload className="w-4 h-4 text-[#E65100]" />
+            <span>Enviar currículo (PDF ou Word)</span>
+          </h2>
+          <p className="text-xs text-[#78716c] mt-1">
+            Ao enviar, lemos o arquivo e preenchemos automaticamente o formulário abaixo (experiência, formação,
+            cursos e habilidades). Depois você pode revisar e salvar.
+          </p>
+        </div>
+
+        <ResumeFileUpload />
+
+        {profile.documents.length > 0 && (
+          <div className="space-y-2 pt-2">
+            <h3 className="text-xs font-bold text-[#57433C]">Seus arquivos anexados:</h3>
+            <div className="space-y-2">
+              {profile.documents.map((doc) => (
+                <div
+                  key={doc.id}
+                  className="p-3.5 rounded-xl border border-[#FEEDDF] bg-stone-50 flex items-center justify-between text-xs"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <File className="w-4 h-4 text-[#E65100]" />
+                    <span className="font-semibold text-[#2E221F]">{doc.fileName}</span>
+                    <span className="text-[11px] text-[#A8A29E]">
+                      ({(doc.fileSize / 1024).toFixed(1)} KB)
+                    </span>
+                  </div>
+
+                  <a
+                    href={`/api/documents/${doc.fileKey}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-bold text-[#E65100] hover:underline flex items-center gap-1"
+                  >
+                    <Download className="w-3.5 h-3.5" /> Baixar
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Formulário do Currículo Estruturado */}
       <form action="/api/candidate/resume" method="POST" className="bg-white p-6 sm:p-10 rounded-3xl border border-[#FEEDDF] shadow-xs space-y-8">
-        {/* Resumo Profissional */}
+        <p className="text-xs text-[#78716c] -mt-2">
+          Campos preenchidos pelo anexo ficam editáveis. Confira e clique em{" "}
+          <strong>Salvar Currículo Estruturado</strong>.
+        </p>
         <div className="space-y-3">
           <h2 className="text-base font-bold text-[#2E221F] flex items-center gap-2 border-b border-[#FEEDDF] pb-2">
             <FileText className="w-4 h-4 text-[#E65100]" />
@@ -278,56 +332,6 @@ export default async function CurriculoPage({ searchParams }: CurriculoPageProps
           Salvar Currículo Estruturado
         </button>
       </form>
-
-      {/* Seção de Anexos (PDF/DOCX) */}
-      <div className="bg-white p-6 sm:p-10 rounded-3xl border border-[#FEEDDF] shadow-xs space-y-6">
-        <div className="flex items-center justify-between border-b border-[#FEEDDF] pb-3">
-          <div>
-            <h2 className="text-base font-bold text-[#2E221F] flex items-center gap-2">
-              <Upload className="w-4 h-4 text-[#E65100]" />
-              <span>Currículo em Anexo (PDF ou Imagem)</span>
-            </h2>
-            <p className="text-xs text-[#78716c]">
-              O anexo é complementar e será disponibilizado para download seguro aos recrutadores autorizados.
-            </p>
-          </div>
-        </div>
-
-        {/* Upload Form */}
-        <ResumeFileUpload />
-
-        {/* Documentos Anexados */}
-        {profile.documents.length > 0 && (
-          <div className="space-y-2 pt-2">
-            <h3 className="text-xs font-bold text-[#57433C]">Seus arquivos anexados:</h3>
-            <div className="space-y-2">
-              {profile.documents.map((doc) => (
-                <div
-                  key={doc.id}
-                  className="p-3.5 rounded-xl border border-[#FEEDDF] bg-stone-50 flex items-center justify-between text-xs"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <File className="w-4 h-4 text-[#E65100]" />
-                    <span className="font-semibold text-[#2E221F]">{doc.fileName}</span>
-                    <span className="text-[11px] text-[#A8A29E]">
-                      ({(doc.fileSize / 1024).toFixed(1)} KB)
-                    </span>
-                  </div>
-
-                  <a
-                    href={`/api/documents/${doc.fileKey}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs font-bold text-[#E65100] hover:underline flex items-center gap-1"
-                  >
-                    <Download className="w-3.5 h-3.5" /> Baixar
-                  </a>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
     </div>
   );
 }

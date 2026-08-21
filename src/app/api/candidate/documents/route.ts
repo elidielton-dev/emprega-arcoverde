@@ -4,9 +4,9 @@ import { prisma } from "@/lib/db/prisma";
 import { getSession } from "@/lib/auth/session";
 import { saveFile } from "@/lib/storage/storage";
 import { logAudit } from "@/lib/audit/audit";
-import { parseResumeFile } from "@/lib/matching/resume-parser";
-import { looksLikeLinkedInResume, parseLinkedInProfileText } from "@/lib/linkedin/parse-profile-text";
+import { parseResumeBuffer } from "@/lib/matching/resume-parser";
 import { applyLinkedInDataToCandidate } from "@/lib/linkedin/apply-to-resume";
+import { hasStructuredContent, parseResumeToStructured } from "@/lib/resume/parse-structured";
 
 export async function POST(req: NextRequest) {
   try {
@@ -31,13 +31,17 @@ export async function POST(req: NextRequest) {
       return formRedirect(new URL("/painel/curriculo?erro=arquivo_obrigatorio", req.url));
     }
 
-    // Validação de limite de 10MB
     if (file.size > 10 * 1024 * 1024) {
       return formRedirect(new URL("/painel/curriculo?erro=arquivo_muito_grande", req.url));
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const stored = await saveFile(buffer, file.name, file.type || "application/octet-stream");
+    const mimeType = file.type || "application/octet-stream";
+
+    // Extrai texto em memória (não depende de ler o storage de volta)
+    const parsed = await parseResumeBuffer(buffer, mimeType, file.name);
+
+    const stored = await saveFile(buffer, file.name, mimeType);
 
     const doc = await prisma.candidateDocument.create({
       data: {
@@ -49,51 +53,25 @@ export async function POST(req: NextRequest) {
         mimeType: stored.mimeType,
         documentType,
         uploadedById: session.userId,
-        parseStatus: "PENDING",
+        parsedText: parsed.text || null,
+        parsedAt: new Date(),
+        parseStatus: parsed.status,
       },
     });
 
-    // Extrai texto do anexo para o ATS (não bloqueia o fluxo se falhar)
-    try {
-      const parsed = await parseResumeFile(stored.fileKey, stored.mimeType, stored.fileName);
-      await prisma.candidateDocument.update({
-        where: { id: doc.id },
-        data: {
-          parsedText: parsed.text || null,
-          parsedAt: new Date(),
-          parseStatus: parsed.status,
-        },
-      });
-
-      if (
-        documentType === "RESUME" &&
-        parsed.status === "OK" &&
-        parsed.text &&
-        looksLikeLinkedInResume(parsed.text)
-      ) {
-        try {
-          const linkedIn = parseLinkedInProfileText(parsed.text);
-          await applyLinkedInDataToCandidate(session.userId, linkedIn, {
+    let filled = false;
+    if (documentType === "RESUME" && parsed.status === "OK" && parsed.text) {
+      try {
+        const structured = parseResumeToStructured(parsed.text);
+        if (hasStructuredContent(structured)) {
+          await applyLinkedInDataToCandidate(session.userId, structured, {
             replaceStructured: true,
           });
-          await logAudit({
-            userId: session.userId,
-            action: "DOCUMENT_UPLOADED",
-            resourceType: "CandidateDocument",
-            resourceId: doc.id,
-            details: { fileName: file.name, fileSize: file.size, linkedIn: true },
-          });
-          return formRedirect(new URL("/painel/curriculo?sucesso=linkedin_anexo", req.url));
-        } catch (linkedInErr) {
-          console.warn("Import LinkedIn a partir do anexo falhou:", linkedInErr);
+          filled = true;
         }
+      } catch (fillErr) {
+        console.warn("Preenchimento automático do currículo falhou:", fillErr);
       }
-    } catch (parseError) {
-      console.warn("Parse do documento falhou no upload:", doc.id, parseError);
-      await prisma.candidateDocument.update({
-        where: { id: doc.id },
-        data: { parseStatus: "FAILED", parsedAt: new Date() },
-      });
     }
 
     await logAudit({
@@ -101,9 +79,23 @@ export async function POST(req: NextRequest) {
       action: "DOCUMENT_UPLOADED",
       resourceType: "CandidateDocument",
       resourceId: doc.id,
-      details: { fileName: file.name, fileSize: file.size },
+      details: {
+        fileName: file.name,
+        fileSize: file.size,
+        autoFilled: filled,
+        parseStatus: parsed.status,
+      },
     });
 
+    if (filled) {
+      return formRedirect(new URL("/painel/curriculo?sucesso=preenchido", req.url));
+    }
+    if (parsed.status === "UNSUPPORTED") {
+      return formRedirect(new URL("/painel/curriculo?sucesso=anexo_enviado&aviso=sem_texto", req.url));
+    }
+    if (parsed.status === "FAILED") {
+      return formRedirect(new URL("/painel/curriculo?sucesso=anexo_enviado&aviso=parse_falhou", req.url));
+    }
     return formRedirect(new URL("/painel/curriculo?sucesso=anexo_enviado", req.url));
   } catch (error) {
     console.error("Erro no upload de documento:", error);

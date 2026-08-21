@@ -49,25 +49,30 @@ export async function saveFile(
   const fileKey = makeFileKey(originalName);
 
   if (useSupabaseStorage()) {
-    const client = supabaseAdmin();
-    if (!client) {
-      throw new Error("Supabase Storage não configurado (SERVICE_ROLE_KEY / URL).");
+    try {
+      const client = supabaseAdmin();
+      if (!client) {
+        throw new Error("Supabase Storage não configurado (SERVICE_ROLE_KEY / URL).");
+      }
+      const { error } = await client.storage.from(bucketName()).upload(fileKey, buffer, {
+        contentType: mimeType || "application/octet-stream",
+        upsert: false,
+      });
+      if (error) {
+        console.error("Supabase Storage upload error:", error);
+        throw new Error(`Falha ao enviar arquivo: ${error.message}`);
+      }
+      return {
+        fileKey,
+        fileName: originalName,
+        fileSize: buffer.length,
+        mimeType,
+        url: `/api/documents/${fileKey}`,
+      };
+    } catch (err) {
+      console.warn("Storage Supabase falhou; salvando em disco local:", err);
+      return saveFileLocally(buffer, originalName, mimeType, fileKey);
     }
-    const { error } = await client.storage.from(bucketName()).upload(fileKey, buffer, {
-      contentType: mimeType || "application/octet-stream",
-      upsert: false,
-    });
-    if (error) {
-      console.error("Supabase Storage upload error:", error);
-      throw new Error(`Falha ao enviar arquivo: ${error.message}`);
-    }
-    return {
-      fileKey,
-      fileName: originalName,
-      fileSize: buffer.length,
-      mimeType,
-      url: `/api/documents/${fileKey}`,
-    };
   }
 
   return saveFileLocally(buffer, originalName, mimeType, fileKey);
