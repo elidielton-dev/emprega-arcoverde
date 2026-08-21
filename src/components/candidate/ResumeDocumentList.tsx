@@ -1,12 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import { Download, File, Trash2 } from "lucide-react";
+import { File, Trash2 } from "lucide-react";
 
 type DocItem = {
   id: string;
   fileName: string;
-  fileKey: string;
   fileSize: number;
 };
 
@@ -70,25 +69,15 @@ export function ResumeDocumentList({ documents }: { documents: DocItem[] }) {
               </span>
             </div>
 
-            <div className="flex shrink-0 items-center gap-3">
-              <a
-                href={`/api/documents/${doc.fileKey}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 text-xs font-bold text-[#E65100] hover:underline"
-              >
-                <Download className="h-3.5 w-3.5" /> Baixar
-              </a>
-              <button
-                type="button"
-                onClick={() => onRemove(doc.id)}
-                disabled={removingId === doc.id}
-                className="flex items-center gap-1 text-xs font-bold text-red-600 hover:underline disabled:opacity-60"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                {removingId === doc.id ? "Removendo…" : "Remover"}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => onRemove(doc.id)}
+              disabled={removingId === doc.id}
+              className="flex shrink-0 items-center gap-1 text-xs font-bold text-red-600 hover:underline disabled:opacity-60"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              {removingId === doc.id ? "Removendo…" : "Remover"}
+            </button>
           </div>
         ))}
       </div>
