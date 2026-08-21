@@ -22,6 +22,7 @@ interface CurriculoPageProps {
     erro?: string;
     aviso?: string;
     t?: string;
+    stage?: string;
     exp?: string;
     edu?: string;
     cursos?: string;
@@ -83,9 +84,11 @@ export default async function CurriculoPage({ searchParams }: CurriculoPageProps
                   ? "O arquivo não parece um currículo. Envie um PDF/DOCX com dados profissionais."
                   : searchParams.erro === "sem_texto"
                     ? "Não conseguimos ler texto no arquivo (PDF escaneado/imagem). Use PDF com texto ou DOCX."
-                    : searchParams.erro
-                      ? "Não foi possível enviar o currículo. Tente novamente com PDF ou DOCX."
-                      : null;
+                    : searchParams.erro === "falha_upload"
+                      ? `Falha técnica no envio${searchParams.stage ? ` (${searchParams.stage})` : ""}. Tente de novo ou use DOCX.`
+                      : searchParams.erro
+                        ? "Não foi possível enviar o currículo. Tente novamente com PDF ou DOCX."
+                        : null;
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
@@ -116,10 +119,12 @@ export default async function CurriculoPage({ searchParams }: CurriculoPageProps
           <CheckCircle2 className="w-4 h-4 text-emerald-600" />
           <span>
             {searchParams.sucesso === "preenchido"
-              ? "Arquivo aceito e formulário preenchido automaticamente. Revise abaixo e clique em Salvar se quiser ajustar."
+              ? searchParams.aviso === "anexo_nao_salvo"
+                ? "Formulário preenchido. O arquivo não pôde ser armazenado agora, mas seus dados já estão no currículo — revise e salve."
+                : "Arquivo aceito e formulário preenchido automaticamente. Revise abaixo e clique em Salvar se quiser ajustar."
               : searchParams.sucesso === "anexo_enviado"
                 ? searchParams.aviso === "pouco_dado"
-                  ? "Anexo salvo. Extraímos pouco dado estruturado — complete o formulário manualmente."
+                  ? "Anexo processado. Extraímos pouco dado estruturado — complete o formulário manualmente."
                   : "Anexo enviado com sucesso."
                 : "Currículo atualizado com sucesso!"}
           </span>

@@ -1,8 +1,15 @@
 import fs from "fs";
+import os from "os";
 import path from "path";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-const LOCAL_STORAGE_DIR = path.join(process.cwd(), "uploads");
+function localStorageDir() {
+  // No Vercel o filesystem do projeto é read-only; /tmp funciona.
+  if (process.env.VERCEL || process.env.STORAGE_USE_TMP === "1") {
+    return path.join(os.tmpdir(), "emprega-arcoverde-uploads");
+  }
+  return path.join(process.cwd(), "uploads");
+}
 
 export interface StoredFileInfo {
   fileKey: string;
@@ -40,7 +47,34 @@ function makeFileKey(originalName: string) {
   return `${Date.now()}-${Math.random().toString(36).substring(2, 8)}-${cleanName}`;
 }
 
-/** Salva arquivo (Supabase Storage em produção; disco local em fallback). */
+async function uploadToSupabase(
+  buffer: Buffer,
+  originalName: string,
+  mimeType: string,
+  fileKey: string,
+): Promise<StoredFileInfo> {
+  const client = supabaseAdmin();
+  if (!client) {
+    throw new Error("Supabase Storage não configurado (SERVICE_ROLE_KEY / URL).");
+  }
+  const { error } = await client.storage.from(bucketName()).upload(fileKey, buffer, {
+    contentType: mimeType || "application/octet-stream",
+    upsert: false,
+  });
+  if (error) {
+    console.error("Supabase Storage upload error:", error);
+    throw new Error(`Falha ao enviar arquivo: ${error.message}`);
+  }
+  return {
+    fileKey,
+    fileName: originalName,
+    fileSize: buffer.length,
+    mimeType,
+    url: `/api/documents/${fileKey}`,
+  };
+}
+
+/** Salva arquivo (Supabase; fallback local/tmp). Nunca engole o erro sem tentar fallback. */
 export async function saveFile(
   buffer: Buffer,
   originalName: string,
@@ -50,27 +84,9 @@ export async function saveFile(
 
   if (useSupabaseStorage()) {
     try {
-      const client = supabaseAdmin();
-      if (!client) {
-        throw new Error("Supabase Storage não configurado (SERVICE_ROLE_KEY / URL).");
-      }
-      const { error } = await client.storage.from(bucketName()).upload(fileKey, buffer, {
-        contentType: mimeType || "application/octet-stream",
-        upsert: false,
-      });
-      if (error) {
-        console.error("Supabase Storage upload error:", error);
-        throw new Error(`Falha ao enviar arquivo: ${error.message}`);
-      }
-      return {
-        fileKey,
-        fileName: originalName,
-        fileSize: buffer.length,
-        mimeType,
-        url: `/api/documents/${fileKey}`,
-      };
+      return await uploadToSupabase(buffer, originalName, mimeType, fileKey);
     } catch (err) {
-      console.warn("Storage Supabase falhou; salvando em disco local:", err);
+      console.warn("Storage Supabase falhou; tentando disco local/tmp:", err);
       return saveFileLocally(buffer, originalName, mimeType, fileKey);
     }
   }
@@ -78,19 +94,36 @@ export async function saveFile(
   return saveFileLocally(buffer, originalName, mimeType, fileKey);
 }
 
-/** @deprecated use saveFile — mantido para compatibilidade */
+/**
+ * Tenta salvar; se falhar, retorna null em vez de lançar.
+ * Útil para não bloquear o preenchimento do currículo.
+ */
+export async function trySaveFile(
+  buffer: Buffer,
+  originalName: string,
+  mimeType: string,
+): Promise<StoredFileInfo | null> {
+  try {
+    return await saveFile(buffer, originalName, mimeType);
+  } catch (err) {
+    console.error("trySaveFile falhou:", err);
+    return null;
+  }
+}
+
 export async function saveFileLocally(
   buffer: Buffer,
   originalName: string,
   mimeType: string,
   forcedKey?: string,
 ): Promise<StoredFileInfo> {
-  if (!fs.existsSync(LOCAL_STORAGE_DIR)) {
-    fs.mkdirSync(LOCAL_STORAGE_DIR, { recursive: true });
+  const dir = localStorageDir();
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
   }
 
   const fileKey = forcedKey || makeFileKey(originalName);
-  const filePath = path.join(LOCAL_STORAGE_DIR, fileKey);
+  const filePath = path.join(dir, fileKey);
   await fs.promises.writeFile(filePath, buffer);
 
   return {
@@ -106,29 +139,34 @@ export async function getFileSignedUrl(fileKey: string, _expiresInSeconds = 300)
   return `/api/documents/${fileKey}`;
 }
 
-/** Lê arquivo do storage ativo (Supabase ou local). */
 export async function readFile(fileKey: string): Promise<Buffer | null> {
   if (useSupabaseStorage()) {
     const client = supabaseAdmin();
-    if (!client) return null;
-    const { data, error } = await client.storage.from(bucketName()).download(fileKey);
-    if (error || !data) {
-      // Fallback: arquivo antigo ainda no disco local
-      return readLocalFileOnly(fileKey);
+    if (client) {
+      const { data, error } = await client.storage.from(bucketName()).download(fileKey);
+      if (!error && data) {
+        const ab = await data.arrayBuffer();
+        return Buffer.from(ab);
+      }
     }
-    const ab = await data.arrayBuffer();
-    return Buffer.from(ab);
   }
   return readLocalFileOnly(fileKey);
 }
 
-/** @deprecated use readFile */
 export async function readLocalFile(fileKey: string): Promise<Buffer | null> {
   return readFile(fileKey);
 }
 
 async function readLocalFileOnly(fileKey: string): Promise<Buffer | null> {
-  const filePath = path.join(LOCAL_STORAGE_DIR, fileKey);
-  if (!fs.existsSync(filePath)) return null;
-  return fs.promises.readFile(filePath);
+  const candidates = [
+    path.join(localStorageDir(), fileKey),
+    path.join(process.cwd(), "uploads", fileKey),
+    path.join(os.tmpdir(), "emprega-arcoverde-uploads", fileKey),
+  ];
+  for (const filePath of candidates) {
+    if (fs.existsSync(filePath)) {
+      return fs.promises.readFile(filePath);
+    }
+  }
+  return null;
 }

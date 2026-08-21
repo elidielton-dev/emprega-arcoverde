@@ -76,7 +76,13 @@ export function ResumeFileUpload() {
         redirect?: string;
         erro?: string | null;
         ok?: boolean;
+        message?: string;
+        stage?: string;
       } | null;
+
+      if (!data?.ok && data?.message) {
+        console.warn("Upload error:", data.stage, data.message);
+      }
 
       const target =
         data?.redirect ||
@@ -84,7 +90,6 @@ export function ResumeFileUpload() {
           ? `/painel/curriculo?erro=${data.erro}`
           : `/painel/curriculo?sucesso=preenchido`);
 
-      // Reload completo — formulário client-side precisa remontar com dados do servidor
       window.location.href = target.includes("t=")
         ? target
         : `${target}${target.includes("?") ? "&" : "?"}t=${Date.now()}`;

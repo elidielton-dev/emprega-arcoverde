@@ -11,7 +11,6 @@ export type ParseResult = {
 
 const nodeRequire = createRequire(path.join(process.cwd(), "package.json"));
 
-/** Mantém quebras de linha (necessárias para preencher o formulário). */
 function tidyText(raw: string, preserveLines = true): string {
   let text = (raw || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   if (preserveLines) {
@@ -25,13 +24,38 @@ function tidyText(raw: string, preserveLines = true): string {
   return text.replace(/\s+/g, " ").trim();
 }
 
-async function extractPdfText(buffer: Buffer): Promise<string> {
-  const pdfParseMod = nodeRequire("pdf-parse") as {
-    PDFParse: new (opts: { data: Buffer | Uint8Array }) => {
-      getText: () => Promise<{ text?: string }>;
-      destroy: () => Promise<void>;
-    };
+async function loadPdfParse(): Promise<{
+  PDFParse: new (opts: { data: Buffer | Uint8Array }) => {
+    getText: () => Promise<{ text?: string }>;
+    destroy: () => Promise<void>;
   };
+}> {
+  try {
+    return nodeRequire("pdf-parse") as {
+      PDFParse: new (opts: { data: Buffer | Uint8Array }) => {
+        getText: () => Promise<{ text?: string }>;
+        destroy: () => Promise<void>;
+      };
+    };
+  } catch {
+    const mod = (await import("pdf-parse")) as unknown as {
+      PDFParse: new (opts: { data: Buffer | Uint8Array }) => {
+        getText: () => Promise<{ text?: string }>;
+        destroy: () => Promise<void>;
+      };
+      default?: {
+        PDFParse: new (opts: { data: Buffer | Uint8Array }) => {
+          getText: () => Promise<{ text?: string }>;
+          destroy: () => Promise<void>;
+        };
+      };
+    };
+    return { PDFParse: mod.PDFParse || mod.default!.PDFParse };
+  }
+}
+
+async function extractPdfText(buffer: Buffer): Promise<string> {
+  const pdfParseMod = await loadPdfParse();
   const parser = new pdfParseMod.PDFParse({ data: buffer });
   try {
     const result = await parser.getText();
@@ -69,7 +93,6 @@ export async function parseResumeBuffer(
       return { text, status: text.length > 20 ? "OK" : "FAILED" };
     }
 
-    // Imagens: salva o anexo, mas não extrai texto sem OCR
     if (mimeType.startsWith("image/") || /\.(png|jpe?g|webp)$/i.test(fileName)) {
       return { text: "", status: "UNSUPPORTED" };
     }
