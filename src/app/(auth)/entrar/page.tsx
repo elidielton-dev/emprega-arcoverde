@@ -1,7 +1,6 @@
 import React from "react";
 import Link from "next/link";
 import { BrandLogo } from "@/components/ui/BrandLogo";
-import { DemoAccounts } from "@/components/auth/DemoAccounts";
 import { OAuthButtons } from "@/components/auth/OAuthButtons";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { Lock, Mail, ArrowRight } from "lucide-react";
@@ -115,8 +114,6 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
-
-          <DemoAccounts />
 
           <div className="text-center pt-2 text-xs text-[#78716c]">
             Ainda não tem cadastro?{" "}
