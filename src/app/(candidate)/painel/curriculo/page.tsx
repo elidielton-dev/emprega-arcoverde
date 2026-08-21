@@ -4,9 +4,6 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { getSession } from "@/lib/auth/session";
 import {
-  FileText,
-  Briefcase,
-  GraduationCap,
   Upload,
   CheckCircle2,
   AlertCircle,
@@ -14,6 +11,7 @@ import {
   Download,
 } from "lucide-react";
 import { ResumeFileUpload } from "@/components/candidate/ResumeFileUpload";
+import { ResumeStructuredForm } from "@/components/candidate/ResumeStructuredForm";
 
 interface CurriculoPageProps {
   searchParams: {
@@ -39,9 +37,9 @@ export default async function CurriculoPage({ searchParams }: CurriculoPageProps
       resumeVersions: {
         where: { isCurrent: true },
         include: {
-          experiences: true,
-          educations: true,
-          courses: true,
+          experiences: { orderBy: { createdAt: "asc" } },
+          educations: { orderBy: { createdAt: "asc" } },
+          courses: { orderBy: { createdAt: "asc" } },
         },
         take: 1,
       },
@@ -160,178 +158,39 @@ export default async function CurriculoPage({ searchParams }: CurriculoPageProps
       </div>
 
       {/* Formulário do Currículo Estruturado */}
-      <form action="/api/candidate/resume" method="POST" className="bg-white p-6 sm:p-10 rounded-3xl border border-[#FEEDDF] shadow-xs space-y-8">
-        <p className="text-xs text-[#78716c] -mt-2">
-          Campos preenchidos pelo anexo ficam editáveis. Confira e clique em{" "}
-          <strong>Salvar Currículo Estruturado</strong>.
-        </p>
-        <div className="space-y-3">
-          <h2 className="text-base font-bold text-[#2E221F] flex items-center gap-2 border-b border-[#FEEDDF] pb-2">
-            <FileText className="w-4 h-4 text-[#E65100]" />
-            <span>Resumo Profissional & Habilidades</span>
-          </h2>
-
-          <div>
-            <label className="block text-xs font-bold text-[#57433C] mb-1">
-              Título / Objetivo Principal
-            </label>
-            <input
-              type="text"
-              name="headline"
-              defaultValue={currentResume?.headline || profile.professionalHeadline || ""}
-              placeholder="Ex: Assistente Administrativo | Vendas e Atendimento"
-              className="w-full text-xs p-3 rounded-xl border border-[#FEEDDF] focus:outline-none focus:border-[#E65100]"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-[#57433C] mb-1">
-              Sobre Você (Resumo da sua trajetória)
-            </label>
-            <textarea
-              name="summary"
-              rows={4}
-              defaultValue={currentResume?.summary || profile.summary || ""}
-              placeholder="Descreva suas principais conquistas, pontos fortes e disposição para o trabalho..."
-              className="w-full text-xs p-3 rounded-xl border border-[#FEEDDF] focus:outline-none focus:border-[#E65100]"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-[#57433C] mb-1">
-              Principais Habilidades (Separadas por vírgula)
-            </label>
-            <input
-              type="text"
-              name="skills"
-              defaultValue={skillsArray.join(", ")}
-              placeholder="Ex: Atendimento ao Cliente, Excel, Vendas, Organização, Boa Comunicação"
-              className="w-full text-xs p-3 rounded-xl border border-[#FEEDDF] focus:outline-none focus:border-[#E65100]"
-            />
-          </div>
-        </div>
-
-        {/* Experiência Profissional */}
-        <div className="space-y-4">
-          <h2 className="text-base font-bold text-[#2E221F] flex items-center gap-2 border-b border-[#FEEDDF] pb-2">
-            <Briefcase className="w-4 h-4 text-[#E65100]" />
-            <span>Experiência Profissional Mais Recente</span>
-          </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-[#57433C] mb-1">Empresa / Estabelecimento</label>
-              <input
-                type="text"
-                name="expCompany"
-                defaultValue={currentResume?.experiences[0]?.company || ""}
-                placeholder="Ex: Comercial Silva / Autônomo"
-                className="w-full text-xs p-3 rounded-xl border border-[#FEEDDF] focus:outline-none focus:border-[#E65100]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-[#57433C] mb-1">Cargo / Função</label>
-              <input
-                type="text"
-                name="expPosition"
-                defaultValue={currentResume?.experiences[0]?.position || ""}
-                placeholder="Ex: Auxiliar de Vendas / Operador de Caixa"
-                className="w-full text-xs p-3 rounded-xl border border-[#FEEDDF] focus:outline-none focus:border-[#E65100]"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-[#57433C] mb-1">Principais Atividades Realizadas</label>
-            <textarea
-              name="expDescription"
-              rows={3}
-              defaultValue={currentResume?.experiences[0]?.description || ""}
-              placeholder="Descreva o que você fazia no dia a dia nesta função..."
-              className="w-full text-xs p-3 rounded-xl border border-[#FEEDDF] focus:outline-none focus:border-[#E65100]"
-            />
-          </div>
-        </div>
-
-        {/* Formação Acadêmica & Cursos */}
-        <div className="space-y-4">
-          <h2 className="text-base font-bold text-[#2E221F] flex items-center gap-2 border-b border-[#FEEDDF] pb-2">
-            <GraduationCap className="w-4 h-4 text-[#E65100]" />
-            <span>Formação & Cursos de Qualificação</span>
-          </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-[#57433C] mb-1">Instituição de Ensino</label>
-              <input
-                type="text"
-                name="eduInstitution"
-                defaultValue={currentResume?.educations[0]?.institution || ""}
-                placeholder="Ex: Escola Rotary / AESA"
-                className="w-full text-xs p-3 rounded-xl border border-[#FEEDDF] focus:outline-none focus:border-[#E65100]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-[#57433C] mb-1">Curso / Nível</label>
-              <input
-                type="text"
-                name="eduCourse"
-                defaultValue={currentResume?.educations[0]?.course || ""}
-                placeholder="Ex: Ensino Médio / Administração"
-                className="w-full text-xs p-3 rounded-xl border border-[#FEEDDF] focus:outline-none focus:border-[#E65100]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-[#57433C] mb-1">Nível de Escolaridade</label>
-              <select
-                name="eduLevel"
-                defaultValue={currentResume?.educations[0]?.level || profile.educationLevel}
-                className="w-full text-xs p-3 rounded-xl border border-[#FEEDDF] bg-white focus:outline-none focus:border-[#E65100]"
-              >
-                <option value="FUNDAMENTAL">Ensino Fundamental</option>
-                <option value="MEDIO">Ensino Médio</option>
-                <option value="TECNICO">Ensino Técnico</option>
-                <option value="SUPERIOR">Ensino Superior</option>
-                <option value="POS">Pós-Graduação</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-            <div>
-              <label className="block text-xs font-bold text-[#57433C] mb-1">Curso Complementar (Ex: Sebrae / Senai)</label>
-              <input
-                type="text"
-                name="courseTitle"
-                defaultValue={currentResume?.courses[0]?.title || ""}
-                placeholder="Ex: Atendimento ao Cliente / Informática Básica"
-                className="w-full text-xs p-3 rounded-xl border border-[#FEEDDF] focus:outline-none focus:border-[#E65100]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-[#57433C] mb-1">Instituição do Curso</label>
-              <input
-                type="text"
-                name="courseInstitution"
-                defaultValue={currentResume?.courses[0]?.institution || ""}
-                placeholder="Ex: Sebrae PE / Senac Arcoverde"
-                className="w-full text-xs p-3 rounded-xl border border-[#FEEDDF] focus:outline-none focus:border-[#E65100]"
-              />
-            </div>
-          </div>
-        </div>
-
-        <button
-          type="submit"
-          className="w-full sm:w-auto bg-[#E65100] hover:bg-[#D84315] text-white font-bold text-xs px-8 py-3.5 rounded-xl shadow-md transition"
-        >
-          Salvar Currículo Estruturado
-        </button>
-      </form>
+      <ResumeStructuredForm
+        headline={currentResume?.headline || profile.professionalHeadline || ""}
+        summary={currentResume?.summary || profile.summary || ""}
+        skills={skillsArray.join(", ")}
+        educationLevelDefault={profile.educationLevel || "MEDIO"}
+        experiences={
+          currentResume?.experiences?.length
+            ? currentResume.experiences.map((e) => ({
+                company: e.company,
+                position: e.position,
+                description: e.description || "",
+                isCurrent: e.isCurrent,
+              }))
+            : []
+        }
+        educations={
+          currentResume?.educations?.length
+            ? currentResume.educations.map((e) => ({
+                institution: e.institution,
+                course: e.course,
+                level: e.level,
+              }))
+            : []
+        }
+        courses={
+          currentResume?.courses?.length
+            ? currentResume.courses.map((c) => ({
+                title: c.title,
+                institution: c.institution,
+              }))
+            : []
+        }
+      />
     </div>
   );
 }
