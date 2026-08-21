@@ -71,11 +71,22 @@ export async function POST(req: NextRequest) {
         parsed.text &&
         looksLikeLinkedInResume(parsed.text)
       ) {
-        const linkedIn = parseLinkedInProfileText(parsed.text);
-        await applyLinkedInDataToCandidate(session.userId, linkedIn, {
-          replaceStructured: true,
-        });
-        return formRedirect(new URL("/painel/curriculo?sucesso=linkedin_anexo", req.url));
+        try {
+          const linkedIn = parseLinkedInProfileText(parsed.text);
+          await applyLinkedInDataToCandidate(session.userId, linkedIn, {
+            replaceStructured: true,
+          });
+          await logAudit({
+            userId: session.userId,
+            action: "DOCUMENT_UPLOADED",
+            resourceType: "CandidateDocument",
+            resourceId: doc.id,
+            details: { fileName: file.name, fileSize: file.size, linkedIn: true },
+          });
+          return formRedirect(new URL("/painel/curriculo?sucesso=linkedin_anexo", req.url));
+        } catch (linkedInErr) {
+          console.warn("Import LinkedIn a partir do anexo falhou:", linkedInErr);
+        }
       }
     } catch (parseError) {
       console.warn("Parse do documento falhou no upload:", doc.id, parseError);

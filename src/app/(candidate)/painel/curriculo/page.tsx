@@ -5,7 +5,6 @@ import { prisma } from "@/lib/db/prisma";
 import { getSession } from "@/lib/auth/session";
 import {
   FileText,
-  Plus,
   Briefcase,
   GraduationCap,
   Award,
@@ -14,9 +13,8 @@ import {
   AlertCircle,
   File,
   Download,
-  Clock,
-  Sparkles,
 } from "lucide-react";
+import { ResumeFileUpload } from "@/components/candidate/ResumeFileUpload";
 
 interface CurriculoPageProps {
   searchParams: {
@@ -93,6 +91,19 @@ export default async function CurriculoPage({ searchParams }: CurriculoPageProps
                 : searchParams.sucesso === "anexo_enviado"
                   ? "Anexo enviado com sucesso."
                   : "Currículo atualizado com sucesso! Nova versão histórica registrada."}
+          </span>
+        </div>
+      )}
+
+      {searchParams.erro && (
+        <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+          <span>
+            {searchParams.erro === "arquivo_obrigatorio"
+              ? "Selecione um arquivo antes de enviar."
+              : searchParams.erro === "arquivo_muito_grande"
+                ? "Arquivo acima de 10 MB."
+                : "Não foi possível enviar o currículo. Tente novamente."}
           </span>
         </div>
       )}
@@ -298,36 +309,7 @@ export default async function CurriculoPage({ searchParams }: CurriculoPageProps
         </div>
 
         {/* Upload Form */}
-        <form
-          action="/api/candidate/documents"
-          method="POST"
-          encType="multipart/form-data"
-          className="p-6 rounded-2xl bg-[#FFF8F2] border-2 border-dashed border-[#FDCFA9] text-center space-y-4"
-        >
-          <div className="max-w-xs mx-auto space-y-2">
-            <Upload className="w-8 h-8 text-[#E65100] mx-auto" />
-            <div className="text-xs text-[#57433C]">
-              <label className="font-bold text-[#E65100] hover:underline cursor-pointer">
-                <span>Clique para selecionar um arquivo</span>
-                <input
-                  type="file"
-                  name="file"
-                  required
-                  accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
-                  className="hidden"
-                />
-              </label>
-              <p className="text-[11px] text-[#A8A29E] mt-1">Formatos: PDF, DOCX, PNG ou JPG (até 10MB)</p>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            className="bg-[#2E221F] hover:bg-[#1F1614] text-white font-bold text-xs px-5 py-2.5 rounded-xl transition"
-          >
-            Enviar Arquivo de Currículo
-          </button>
-        </form>
+        <ResumeFileUpload />
 
         {/* Documentos Anexados */}
         {profile.documents.length > 0 && (
