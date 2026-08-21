@@ -22,6 +22,10 @@ interface CurriculoPageProps {
   searchParams: {
     sucesso?: string;
     erro?: string;
+    exp?: string;
+    edu?: string;
+    cursos?: string;
+    skills?: string;
   };
 }
 
@@ -81,9 +85,32 @@ export default async function CurriculoPage({ searchParams }: CurriculoPageProps
       {searchParams.sucesso && (
         <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          <span>Currículo atualizado com sucesso! Nova versão histórica registrada.</span>
+          <span>
+            {searchParams.sucesso === "importado"
+              ? `Currículo importado do LinkedIn: ${searchParams.exp || 0} experiência(s), ${searchParams.edu || 0} formação(ões), ${searchParams.cursos || 0} curso(s)/certificado(s), ${searchParams.skills || 0} competência(s). Revise e ajuste se precisar.`
+              : searchParams.sucesso === "linkedin_anexo"
+                ? "Anexo do LinkedIn lido e aplicado ao currículo estruturado. Revise os dados abaixo."
+                : searchParams.sucesso === "anexo_enviado"
+                  ? "Anexo enviado com sucesso."
+                  : "Currículo atualizado com sucesso! Nova versão histórica registrada."}
+          </span>
         </div>
       )}
+
+      <div className="rounded-2xl border border-[#D0E2F7] bg-[#F0F7FC] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-bold text-[#0A66C2]">Veio do LinkedIn?</p>
+          <p className="text-xs text-[#4B5563]">
+            Importe experiências, cargos, formação e certificados pelo PDF do seu perfil.
+          </p>
+        </div>
+        <Link
+          href="/painel/importar-linkedin"
+          className="inline-flex items-center justify-center rounded-xl bg-[#0A66C2] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#004182]"
+        >
+          Importar do LinkedIn
+        </Link>
+      </div>
 
       {/* Formulário do Currículo Estruturado */}
       <form action="/api/candidate/resume" method="POST" className="bg-white p-6 sm:p-10 rounded-3xl border border-[#FEEDDF] shadow-xs space-y-8">

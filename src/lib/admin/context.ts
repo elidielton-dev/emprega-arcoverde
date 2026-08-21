@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import {
   ROLE_LABELS,
-  canManageContent,
   canManageCourses,
   canManageSiteSettings,
   canManageUsers,
@@ -67,10 +66,6 @@ export function buildAdminNav(role: string): AdminNavItem[] {
       label: "Atendimento assistido",
       group: "operation",
     });
-  }
-  if (canManageContent(role)) {
-    items.push({ href: "/admin/conteudos", label: "Conteúdos", group: "governance" });
-    items.push({ href: "/admin/links-uteis", label: "Links úteis", group: "governance" });
   }
   if (canManageSiteSettings(role)) {
     items.push({ href: "/admin/configuracoes", label: "Configurações", group: "governance" });

@@ -1,6 +1,8 @@
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { prisma } from "@/lib/db/prisma";
 import { UserRole } from "@/lib/auth/rbac";
+import type { LinkedInProfileData } from "@/lib/linkedin/types";
+import { applyLinkedInDataToCandidate } from "@/lib/linkedin/apply-to-resume";
 
 function displayNameFromAuth(authUser: SupabaseUser, email: string) {
   const meta = authUser.user_metadata || {};
@@ -10,19 +12,48 @@ function displayNameFromAuth(authUser: SupabaseUser, email: string) {
   return email.split("@")[0] || "Candidato";
 }
 
-export async function upsertUserFromSupabase(authUser: SupabaseUser) {
+function enrichmentFromMetadata(authUser: SupabaseUser): LinkedInProfileData {
+  const meta = authUser.user_metadata || {};
+  const headline =
+    typeof meta.headline === "string"
+      ? meta.headline
+      : typeof meta.job_title === "string"
+        ? meta.job_title
+        : undefined;
+  return {
+    fullName: displayNameFromAuth(authUser, authUser.email || ""),
+    headline,
+    pictureUrl:
+      typeof meta.avatar_url === "string"
+        ? meta.avatar_url
+        : typeof meta.picture === "string"
+          ? meta.picture
+          : undefined,
+    skills: [],
+    experiences: [],
+    educations: [],
+    courses: [],
+    source: "metadata",
+  };
+}
+
+export async function upsertUserFromSupabase(
+  authUser: SupabaseUser,
+  options?: { linkedIn?: LinkedInProfileData | null },
+) {
   const email = authUser.email?.toLowerCase().trim();
   if (!email) {
     throw new Error("Conta social sem e-mail");
   }
 
-  const name = displayNameFromAuth(authUser, email);
+  const name = options?.linkedIn?.fullName || displayNameFromAuth(authUser, email);
   const avatarUrl =
-    typeof authUser.user_metadata?.avatar_url === "string"
+    options?.linkedIn?.pictureUrl ||
+    (typeof authUser.user_metadata?.avatar_url === "string"
       ? authUser.user_metadata.avatar_url
       : typeof authUser.user_metadata?.picture === "string"
         ? authUser.user_metadata.picture
-        : undefined;
+        : undefined);
 
   let user = await prisma.user.findFirst({
     where: {
@@ -33,6 +64,8 @@ export async function upsertUserFromSupabase(authUser: SupabaseUser) {
       candidateProfile: true,
     },
   });
+
+  const isNew = !user;
 
   if (!user) {
     user = await prisma.user.create({
@@ -57,6 +90,8 @@ export async function upsertUserFromSupabase(authUser: SupabaseUser) {
             city: "Arcoverde",
             state: "PE",
             educationLevel: "MEDIO",
+            professionalHeadline: options?.linkedIn?.headline || null,
+            summary: options?.linkedIn?.summary || null,
           },
         },
       },
@@ -72,7 +107,9 @@ export async function upsertUserFromSupabase(authUser: SupabaseUser) {
           candidateId: user.candidateProfile.id,
           versionNumber: 1,
           educationLevel: "MEDIO",
-          skillsSnapshot: JSON.stringify([]),
+          headline: options?.linkedIn?.headline || null,
+          summary: options?.linkedIn?.summary || null,
+          skillsSnapshot: JSON.stringify(options?.linkedIn?.skills || []),
         },
       });
     }
@@ -91,11 +128,33 @@ export async function upsertUserFromSupabase(authUser: SupabaseUser) {
     });
   }
 
+  const linkedInPayload = options?.linkedIn || enrichmentFromMetadata(authUser);
+  const isLinkedIn =
+    authUser.app_metadata?.provider === "linkedin_oidc" ||
+    authUser.identities?.some((i) => i.provider === "linkedin_oidc");
+
+  if (isLinkedIn || options?.linkedIn) {
+    try {
+      await applyLinkedInDataToCandidate(user.id, linkedInPayload, {
+        replaceStructured: Boolean(
+          isNew &&
+            (linkedInPayload.experiences.length ||
+              linkedInPayload.educations.length ||
+              linkedInPayload.courses.length),
+        ),
+      });
+    } catch (err) {
+      console.warn("Falha ao aplicar dados LinkedIn no currículo:", err);
+    }
+  }
+
   return {
     userId: user.id,
     email: user.email,
     name: user.name,
     role: user.role as UserRole,
     companyId: user.companyMemberships[0]?.companyId,
+    isNew,
+    isLinkedIn: Boolean(isLinkedIn),
   };
 }

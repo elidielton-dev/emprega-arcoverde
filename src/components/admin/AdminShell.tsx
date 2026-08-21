@@ -13,8 +13,6 @@ import {
   BarChart3,
   UserCog,
   ClipboardList,
-  Newspaper,
-  Link2,
   Settings,
   Menu,
   X,
@@ -35,8 +33,6 @@ const ICONS: Record<string, LucideIcon> = {
   "/admin/indicadores": BarChart3,
   "/admin/usuarios": UserCog,
   "/admin/auditoria": ClipboardList,
-  "/admin/conteudos": Newspaper,
-  "/admin/links-uteis": Link2,
   "/admin/configuracoes": Settings,
 };
 

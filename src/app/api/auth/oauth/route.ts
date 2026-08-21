@@ -4,6 +4,13 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 const PROVIDERS = new Set(["google", "linkedin_oidc"]);
 
+/** Escopos OIDC + extras opcionais (Verified on LinkedIn etc.) via .env */
+function linkedInScopes() {
+  const extra = (process.env.LINKEDIN_EXTRA_SCOPES || "").trim();
+  const base = "openid profile email";
+  return extra ? `${base} ${extra}` : base;
+}
+
 function safeNext(value: string | null) {
   if (value && value.startsWith("/") && !value.startsWith("//")) return value;
   return "/painel";
@@ -30,6 +37,7 @@ export async function GET(req: NextRequest) {
     provider: provider as "google" | "linkedin_oidc",
     options: {
       redirectTo: redirectTo.toString(),
+      scopes: provider === "linkedin_oidc" ? linkedInScopes() : undefined,
       queryParams: provider === "google" ? { access_type: "offline", prompt: "consent" } : undefined,
     },
   });

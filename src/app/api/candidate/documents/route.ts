@@ -5,6 +5,8 @@ import { getSession } from "@/lib/auth/session";
 import { saveFile } from "@/lib/storage/storage";
 import { logAudit } from "@/lib/audit/audit";
 import { parseResumeFile } from "@/lib/matching/resume-parser";
+import { looksLikeLinkedInResume, parseLinkedInProfileText } from "@/lib/linkedin/parse-profile-text";
+import { applyLinkedInDataToCandidate } from "@/lib/linkedin/apply-to-resume";
 
 export async function POST(req: NextRequest) {
   try {
@@ -62,6 +64,19 @@ export async function POST(req: NextRequest) {
           parseStatus: parsed.status,
         },
       });
+
+      if (
+        documentType === "RESUME" &&
+        parsed.status === "OK" &&
+        parsed.text &&
+        looksLikeLinkedInResume(parsed.text)
+      ) {
+        const linkedIn = parseLinkedInProfileText(parsed.text);
+        await applyLinkedInDataToCandidate(session.userId, linkedIn, {
+          replaceStructured: true,
+        });
+        return formRedirect(new URL("/painel/curriculo?sucesso=linkedin_anexo", req.url));
+      }
     } catch (parseError) {
       console.warn("Parse do documento falhou no upload:", doc.id, parseError);
       await prisma.candidateDocument.update({
