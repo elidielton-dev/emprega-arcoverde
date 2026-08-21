@@ -13,11 +13,15 @@ import {
 import { ResumeFileUpload } from "@/components/candidate/ResumeFileUpload";
 import { ResumeStructuredForm } from "@/components/candidate/ResumeStructuredForm";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 interface CurriculoPageProps {
   searchParams: {
     sucesso?: string;
     erro?: string;
     aviso?: string;
+    t?: string;
     exp?: string;
     edu?: string;
     cursos?: string;
@@ -60,7 +64,7 @@ export default async function CurriculoPage({ searchParams }: CurriculoPageProps
     skillsArray = [];
   }
 
-  const formKey = `${currentResume?.id || "new"}-v${currentResume?.versionNumber || 0}`;
+  const formKey = `${currentResume?.id || "new"}-v${currentResume?.versionNumber || 0}-${searchParams.t || searchParams.sucesso || "0"}`;
 
   const errorMessage =
     searchParams.erro === "arquivo_obrigatorio"

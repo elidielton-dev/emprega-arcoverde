@@ -39,35 +39,67 @@ export function ResumeFileUpload() {
     setError(null);
   };
 
-  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     const file = inputRef.current?.files?.[0];
     if (!file || file.size === 0) {
-      e.preventDefault();
       setError("Selecione um arquivo PDF ou DOCX antes de enviar.");
       return;
     }
     if (!ALLOWED.test(file.name)) {
-      e.preventDefault();
       setError("Envie apenas PDF ou DOCX.");
       return;
     }
     if (file.size > MAX_BYTES) {
-      e.preventDefault();
       setError("Arquivo acima de 5 MB.");
       return;
     }
+
     setSubmitting(true);
+    setError(null);
+
+    try {
+      const body = new FormData();
+      body.set("documentType", "RESUME");
+      body.set("file", file);
+
+      const res = await fetch("/api/candidate/documents", {
+        method: "POST",
+        body,
+        headers: {
+          Accept: "application/json",
+          "X-EA-Fetch": "1",
+        },
+      });
+
+      const data = (await res.json().catch(() => null)) as {
+        redirect?: string;
+        erro?: string | null;
+        ok?: boolean;
+      } | null;
+
+      const target =
+        data?.redirect ||
+        (data?.erro
+          ? `/painel/curriculo?erro=${data.erro}`
+          : `/painel/curriculo?sucesso=preenchido`);
+
+      // Reload completo — formulário client-side precisa remontar com dados do servidor
+      window.location.href = target.includes("t=")
+        ? target
+        : `${target}${target.includes("?") ? "&" : "?"}t=${Date.now()}`;
+    } catch (err) {
+      console.error(err);
+      setSubmitting(false);
+      setError("Falha ao enviar. Tente novamente.");
+    }
   };
 
   return (
     <form
-      action="/api/candidate/documents"
-      method="POST"
-      encType="multipart/form-data"
       onSubmit={onSubmit}
       className="space-y-4 rounded-2xl border-2 border-dashed border-[#FDCFA9] bg-[#FFF8F2] p-6 text-center"
     >
-      <input type="hidden" name="documentType" value="RESUME" />
       <input
         ref={inputRef}
         type="file"
@@ -79,11 +111,7 @@ export function ResumeFileUpload() {
 
       <div className="mx-auto max-w-xs space-y-2">
         <Upload className="mx-auto h-8 w-8 text-[#E65100]" aria-hidden />
-        <button
-          type="button"
-          onClick={onPick}
-          className="text-xs font-bold text-[#E65100] hover:underline"
-        >
+        <button type="button" onClick={onPick} className="text-xs font-bold text-[#E65100] hover:underline">
           Clique para selecionar um arquivo
         </button>
         <p className="text-[11px] text-[#A8A29E]">Apenas PDF ou DOCX (até 5 MB)</p>

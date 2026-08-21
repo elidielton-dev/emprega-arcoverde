@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { formRedirect } from "@/lib/http/form-redirect";
 import { prisma } from "@/lib/db/prisma";
 import { getSession } from "@/lib/auth/session";
@@ -6,7 +6,7 @@ import { saveFile } from "@/lib/storage/storage";
 import { logAudit } from "@/lib/audit/audit";
 import { parseResumeBuffer } from "@/lib/matching/resume-parser";
 import { applyParsedResumeToCandidate } from "@/lib/resume/apply-parsed";
-import { hasStructuredContent, parseResumeToStructured } from "@/lib/resume/parse-structured";
+import { parseResumeToStructured } from "@/lib/resume/parse-structured";
 import {
   checkResumeDocLimit,
   checkUploadRateLimit,
@@ -14,19 +14,49 @@ import {
   validateResumeFileBasics,
 } from "@/lib/resume/validate-upload";
 
-function erro(url: string, code: string) {
-  return formRedirect(new URL(`/painel/curriculo?erro=${code}`, url));
+function wantsJson(req: NextRequest) {
+  const accept = req.headers.get("accept") || "";
+  return accept.includes("application/json") || req.headers.get("x-ea-fetch") === "1";
+}
+
+function respond(
+  req: NextRequest,
+  pathWithQuery: string,
+  status: number = 200,
+) {
+  if (wantsJson(req)) {
+    const u = new URL(pathWithQuery, req.url);
+    return NextResponse.json(
+      {
+        ok: !u.searchParams.get("erro"),
+        redirect: u.pathname + u.search,
+        erro: u.searchParams.get("erro"),
+        sucesso: u.searchParams.get("sucesso"),
+      },
+      { status: u.searchParams.get("erro") ? 400 : status },
+    );
+  }
+  return formRedirect(new URL(pathWithQuery, req.url));
+}
+
+function safeDate(value: unknown, fallback = "2020-01-01"): Date {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+  if (typeof value === "string" || typeof value === "number") {
+    const d = new Date(value);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  return new Date(fallback);
 }
 
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession();
     if (!session || session.role !== "CANDIDATE") {
-      return formRedirect(new URL("/entrar", req.url));
+      return respond(req, "/entrar");
     }
 
     if (!checkUploadRateLimit(session.userId)) {
-      return erro(req.url, "rate_limit");
+      return respond(req, "/painel/curriculo?erro=rate_limit");
     }
 
     const profile = await prisma.candidateProfile.findUnique({
@@ -34,11 +64,11 @@ export async function POST(req: NextRequest) {
     });
 
     if (!profile) {
-      return formRedirect(new URL("/painel/perfil", req.url));
+      return respond(req, "/painel/perfil");
     }
 
     if (!(await checkResumeDocLimit(profile.id))) {
-      return erro(req.url, "limite_anexos");
+      return respond(req, "/painel/curriculo?erro=limite_anexos");
     }
 
     const formData = await req.formData();
@@ -46,7 +76,7 @@ export async function POST(req: NextRequest) {
     const documentType = String(formData.get("documentType") || "RESUME");
 
     if (!file || file.size === 0) {
-      return erro(req.url, "arquivo_obrigatorio");
+      return respond(req, "/painel/curriculo?erro=arquivo_obrigatorio");
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -55,18 +85,18 @@ export async function POST(req: NextRequest) {
       buffer,
     );
     if (!basics.ok) {
-      return erro(req.url, basics.reason);
+      return respond(req, `/painel/curriculo?erro=${basics.reason}`);
     }
 
     const mimeType = basics.mimeType;
     const parsed = await parseResumeBuffer(buffer, mimeType, file.name);
 
     if (parsed.status === "FAILED" || !parsed.text || parsed.text.length < 40) {
-      return erro(req.url, "sem_texto");
+      return respond(req, "/painel/curriculo?erro=sem_texto");
     }
 
     if (!looksLikeResumeText(parsed.text)) {
-      return erro(req.url, "nao_curriculo");
+      return respond(req, "/painel/curriculo?erro=nao_curriculo");
     }
 
     const stored = await saveFile(buffer, file.name, mimeType);
@@ -88,18 +118,53 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Sempre monta e aplica — garante pelo menos resumo/título
     const structured = parseResumeToStructured(parsed.text);
-    let filled = false;
-    let fillDetails = {};
 
-    if (hasStructuredContent(structured)) {
-      try {
-        const result = await applyParsedResumeToCandidate(session.userId, structured);
-        filled = result.applied;
-        fillDetails = result.applied ? result.filled : {};
-      } catch (fillErr) {
-        console.warn("Preenchimento automático falhou:", fillErr);
-      }
+    // Sanitiza datas inválidas (evita Prisma quebrar o preenchimento)
+    structured.experiences = (structured.experiences || []).map((e) => ({
+      ...e,
+      company: (e.company || "Empresa").slice(0, 180),
+      position: (e.position || "Cargo").slice(0, 180),
+      startDate: safeDate(e.startDate),
+      endDate: e.endDate ? safeDate(e.endDate) : null,
+      description: e.description || null,
+      isCurrent: Boolean(e.isCurrent),
+    }));
+    structured.educations = (structured.educations || []).map((e) => ({
+      ...e,
+      institution: (e.institution || "Instituição").slice(0, 180),
+      course: (e.course || "Curso").slice(0, 180),
+      level: e.level || "MEDIO",
+      status: e.status || "CONCLUIDO",
+      startDate: e.startDate ? safeDate(e.startDate) : null,
+      endDate: e.endDate ? safeDate(e.endDate) : null,
+    }));
+    structured.courses = (structured.courses || []).map((c) => ({
+      ...c,
+      institution: (c.institution || "Instituição").slice(0, 180),
+      title: (c.title || "Curso").slice(0, 180),
+      completionDate: c.completionDate ? safeDate(c.completionDate) : null,
+    }));
+
+    if (!structured.summary && parsed.text) {
+      structured.summary = parsed.text.replace(/\s+/g, " ").trim().slice(0, 900);
+    }
+    if (!structured.headline) {
+      structured.headline = structured.fullName
+        ? `Profissional — ${structured.fullName}`
+        : "Currículo importado do arquivo";
+    }
+
+    let filled = false;
+    let fillDetails: Record<string, unknown> = {};
+    try {
+      const result = await applyParsedResumeToCandidate(session.userId, structured);
+      filled = result.applied;
+      fillDetails = result.applied ? result.filled : { reason: result.reason };
+    } catch (fillErr) {
+      console.error("Preenchimento automático falhou:", fillErr);
+      fillDetails = { error: String(fillErr) };
     }
 
     await logAudit({
@@ -116,13 +181,12 @@ export async function POST(req: NextRequest) {
     });
 
     if (filled) {
-      return formRedirect(new URL("/painel/curriculo?sucesso=preenchido", req.url));
+      return respond(req, `/painel/curriculo?sucesso=preenchido&t=${Date.now()}`);
     }
 
-    // Arquivo ok, mas parser fraco — ainda assim salva anexo
-    return formRedirect(new URL("/painel/curriculo?sucesso=anexo_enviado&aviso=pouco_dado", req.url));
+    return respond(req, `/painel/curriculo?sucesso=anexo_enviado&aviso=pouco_dado&t=${Date.now()}`);
   } catch (error) {
     console.error("Erro no upload de documento:", error);
-    return erro(req.url, "falha_upload");
+    return respond(req, "/painel/curriculo?erro=falha_upload");
   }
 }

@@ -113,32 +113,50 @@ export async function applyParsedResumeToCandidate(userId: string, data: LinkedI
       coursesSnapshot: JSON.stringify(courses),
       isCurrent: true,
       experiences: {
-        create: experiences.map((e) => ({
-          company: e.company,
-          position: e.position,
-          startDate: e.startDate instanceof Date ? e.startDate : new Date(e.startDate || "2020-01-01"),
-          endDate: e.endDate ? new Date(e.endDate) : null,
-          isCurrent: Boolean(e.isCurrent),
-          description: e.description || null,
-        })),
+        create: experiences
+          .filter((e) => e.company && e.position)
+          .map((e) => {
+            const start =
+              e.startDate instanceof Date && !Number.isNaN(e.startDate.getTime())
+                ? e.startDate
+                : new Date("2020-01-01");
+            const end =
+              e.endDate instanceof Date && !Number.isNaN(e.endDate.getTime())
+                ? e.endDate
+                : e.endDate
+                  ? new Date(e.endDate as string | number | Date)
+                  : null;
+            return {
+              company: String(e.company).slice(0, 180),
+              position: String(e.position).slice(0, 180),
+              startDate: start,
+              endDate: end && !Number.isNaN(end.getTime()) ? end : null,
+              isCurrent: Boolean(e.isCurrent),
+              description: e.description || null,
+            };
+          }),
       },
       educations: {
-        create: educations.map((e) => ({
-          institution: e.institution,
-          course: e.course,
-          level: e.level,
-          startDate: e.startDate ? new Date(e.startDate) : null,
-          endDate: e.endDate ? new Date(e.endDate) : null,
-          status: e.status || "CONCLUIDO",
-        })),
+        create: educations
+          .filter((e) => e.institution && e.course)
+          .map((e) => ({
+            institution: String(e.institution).slice(0, 180),
+            course: String(e.course).slice(0, 180),
+            level: e.level || "MEDIO",
+            startDate: null,
+            endDate: null,
+            status: e.status || "CONCLUIDO",
+          })),
       },
       courses: {
-        create: courses.map((c) => ({
-          institution: c.institution,
-          title: c.title,
-          completionDate: c.completionDate ? new Date(c.completionDate) : null,
-          hours: c.hours ?? null,
-        })),
+        create: courses
+          .filter((c) => c.institution && c.title)
+          .map((c) => ({
+            institution: String(c.institution).slice(0, 180),
+            title: String(c.title).slice(0, 180),
+            completionDate: null,
+            hours: c.hours ?? null,
+          })),
       },
     },
   });

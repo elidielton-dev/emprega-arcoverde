@@ -8,16 +8,23 @@ function normalize(text: string) {
     .toLowerCase();
 }
 
+/** PDFs frequentemente vêm sem quebra de linha — força seções. */
 function prepareText(raw: string): string {
   let text = (raw || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
+  // Se quase não há linhas, quebra por cabeçalhos no meio do parágrafo
+  const lineCount = text.split("\n").filter((l) => l.trim()).length;
+  if (lineCount < 6 && text.length > 120) {
+    text = text.replace(/\s{2,}/g, "\n");
+  }
 
   const headers = [
     "objetivo profissional",
     "objetivo",
     "resumo profissional",
     "perfil profissional",
+    "dados pessoais",
     "sobre mim",
-    "sobre",
     "experiencia profissional",
     "experiência profissional",
     "historico profissional",
@@ -44,17 +51,21 @@ function prepareText(raw: string): string {
     "conhecimentos técnicos",
     "conhecimentos",
     "idiomas",
+    "informacoes adicionais",
+    "informações adicionais",
   ];
 
   for (const h of headers) {
-    const re = new RegExp(`([^\\n])(\\s*)(${h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})\\s*[:\\-]?`, "gi");
-    text = text.replace(re, `$1\n$3\n`);
+    const escaped = h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`(${escaped})\\s*[:\\-]?\\s*`, "gi");
+    text = text.replace(re, "\n$1\n");
   }
 
   return text
     .replace(/objetivo profissional/gi, "Sobre")
     .replace(/resumo profissional/gi, "Sobre")
     .replace(/perfil profissional/gi, "Sobre")
+    .replace(/dados pessoais/gi, "Sobre")
     .replace(/sobre mim/gi, "Sobre")
     .replace(/experi[eê]ncia profissional/gi, "Experiência")
     .replace(/hist[oó]rico profissional/gi, "Experiência")
@@ -67,17 +78,7 @@ function prepareText(raw: string): string {
 }
 
 function extractSkillsHeuristic(text: string): string[] {
-  const skillsBlock = text.match(
-    /(?:habilidades|compet[eê]ncias|conhecimentos)[:\s]*\n?([\s\S]{8,500}?)(?=\n\s*(?:experi|forma|educa|curso|idioma|sobre|$))/i,
-  );
-  const blob = skillsBlock?.[1] || "";
-  const fromBlock = blob
-    .split(/[·•|,;/\n]/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 1 && s.length < 45);
-
-  if (fromBlock.length >= 2) return fromBlock.slice(0, 30);
-
+  const n = normalize(text);
   const common = [
     "excel",
     "word",
@@ -86,102 +87,143 @@ function extractSkillsHeuristic(text: string): string[] {
     "atendimento",
     "vendas",
     "comunicação",
+    "comunicacao",
     "trabalho em equipe",
     "organização",
+    "organizacao",
     "informática",
+    "informatica",
     "caixa",
     "estoque",
     "administrativo",
     "python",
     "javascript",
     "gestão",
+    "gestao",
+    "liderança",
+    "lideranca",
   ];
-  const lower = normalize(text);
-  return common.filter((c) => lower.includes(normalize(c))).slice(0, 15);
+  return common.filter((c) => n.includes(normalize(c))).slice(0, 15);
 }
 
-/** Fallback quando o PDF não tem seções claras. */
-function fallbackFromPlainText(text: string): Partial<LinkedInProfileData> {
-  const lines = text
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean);
+function extractEmail(text: string) {
+  return text.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i)?.[0];
+}
 
-  const fullName = lines[0]?.slice(0, 120);
-  let headline: string | undefined = lines[1]?.slice(0, 180);
-  if (headline && /@|telefone|whatsapp|\d{5}/i.test(headline)) {
-    headline = lines.find((l, i) => i > 0 && l.length > 8 && l.length < 100 && !/@/.test(l))?.slice(0, 180);
-  }
-
-  const summaryLines = lines.slice(1, 12).filter((l) => !/@/.test(l) && !/^\d/.test(l));
-  const summary = summaryLines.join(" ").slice(0, 900);
-
-  // Blocos com datas ≈ experiências
-  const experiences: LinkedInProfileData["experiences"] = [];
-  const dateRe =
-    /\b((jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez|janeiro|fevereiro|mar[cç]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|\d{1,2})[\/\s.de-]+(19|20)\d{2}|\b(19|20)\d{2}\b)/i;
-
-  for (let i = 0; i < lines.length - 1; i++) {
-    if (!dateRe.test(lines[i + 1]) && !dateRe.test(lines[i])) continue;
-    const maybeTitle = lines[i];
-    const maybeCompany = lines[i - 1] || lines[i + 1];
-    if (!maybeTitle || maybeTitle.length < 2 || maybeTitle.length > 80) continue;
-    if (/experiencia|formacao|objetivo|habilidade|curso/i.test(maybeTitle)) continue;
-
-    const position = dateRe.test(lines[i]) ? lines[i - 1] || maybeTitle : maybeTitle;
-    const company = dateRe.test(lines[i]) ? maybeTitle : maybeCompany;
-    if (!position || !company || position === company) continue;
-
-    experiences.push({
-      company: company.slice(0, 180),
-      position: position.slice(0, 180),
-      startDate: new Date("2020-01-01"),
-      endDate: null,
-      isCurrent: /atual|momento|presente|hoje/i.test(lines[i] + lines[i + 1]),
-      description: null,
-    });
-    if (experiences.length >= 6) break;
-  }
-
-  return {
-    fullName,
-    headline,
-    summary: summary.length > 40 ? summary : undefined,
-    experiences,
-  };
+function extractPhone(text: string) {
+  return text.match(/(\(?\d{2}\)?\s?\d{4,5}[-\s]?\d{4})/)?.[0];
 }
 
 /**
  * Interpreta texto de PDF/DOCX e devolve dados para o formulário.
+ * Sempre tenta preencher pelo menos nome, título e resumo.
  */
 export function parseResumeToStructured(rawText: string): LinkedInProfileData {
   const prepared = prepareText(rawText || "");
   const parsed = parseLinkedInProfileText(prepared);
-  const fallback = fallbackFromPlainText(prepared);
+  const flat = prepared.replace(/\s+/g, " ").trim();
+  const lines = prepared
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
 
   if (!parsed.skills.length) {
     parsed.skills = extractSkillsHeuristic(prepared);
   }
 
-  if (!parsed.fullName && fallback.fullName) parsed.fullName = fallback.fullName;
-  if (!parsed.headline && fallback.headline) parsed.headline = fallback.headline;
-  if (!parsed.summary && fallback.summary) parsed.summary = fallback.summary;
-  if (!parsed.experiences.length && fallback.experiences?.length) {
-    parsed.experiences = fallback.experiences;
+  // Nome: primeira linha “humana”
+  if (!parsed.fullName) {
+    const nameLine = lines.find(
+      (l) =>
+        l.length > 3 &&
+        l.length < 80 &&
+        !/@/.test(l) &&
+        !/experiencia|formacao|objetivo|curriculo|telefone/i.test(l),
+    );
+    parsed.fullName = nameLine?.slice(0, 120);
   }
 
-  if (!parsed.summary && prepared.length > 80) {
-    const lines = prepared
-      .split("\n")
-      .map((l) => l.trim())
-      .filter(Boolean);
-    const body = lines.slice(1, 10).join(" ").slice(0, 800);
-    if (body.length > 40) parsed.summary = body;
+  if (!parsed.headline) {
+    const objective = prepared.match(
+      /(?:objetivo|titulo|cargo desejado)\s*[:\-]?\s*([^\n]{8,120})/i,
+    );
+    parsed.headline =
+      objective?.[1]?.trim() ||
+      lines.find(
+        (l, i) =>
+          i > 0 &&
+          l.length > 8 &&
+          l.length < 100 &&
+          !/@/.test(l) &&
+          !/^\d/.test(l) &&
+          !/experiencia|formacao|habilidade/i.test(l),
+      ) ||
+      (parsed.fullName ? `Profissional — ${parsed.fullName}` : "Currículo importado");
   }
 
-  // Garante pelo menos headline a partir do nome/objetivo
-  if (!parsed.headline && parsed.fullName) {
-    parsed.headline = `Profissional — ${parsed.fullName}`;
+  if (!parsed.summary || parsed.summary.length < 40) {
+    const about = prepared.match(
+      /(?:sobre|resumo|objetivo)[^\n]*\n([\s\S]{40,800}?)(?=\n\s*(?:experi|forma|educa|curso|habili|competen)|$)/i,
+    );
+    parsed.summary =
+      about?.[1]?.replace(/\s+/g, " ").trim().slice(0, 900) ||
+      flat.slice(0, 900);
+  }
+
+  // Experiência: padrões "Cargo - Empresa" / "Cargo na Empresa"
+  if (!parsed.experiences.length) {
+    const expBlock = prepared.match(
+      /experi[eê]ncia[^\n]*\n([\s\S]{20,2000}?)(?=\n\s*(?:forma|educa|curso|habili|competen|idioma)|$)/i,
+    );
+    const block = expBlock?.[1] || prepared;
+    const pairs = block.matchAll(
+      /([A-Za-zÀ-ÿ0-9][A-Za-zÀ-ÿ0-9\s\/\-]{2,60}?)\s+(?:[-–—]|em|na|no)\s+([A-Za-zÀ-ÿ0-9][A-Za-zÀ-ÿ0-9\s\.\&\-]{2,60})/gi,
+    );
+    for (const m of pairs) {
+      const position = m[1].trim();
+      const company = m[2].trim();
+      if (/experiencia|formacao|objetivo|habilidade/i.test(position)) continue;
+      parsed.experiences.push({
+        company: company.slice(0, 180),
+        position: position.slice(0, 180),
+        startDate: new Date("2020-01-01"),
+        endDate: null,
+        isCurrent: false,
+        description: null,
+      });
+      if (parsed.experiences.length >= 5) break;
+    }
+  }
+
+  // Formação
+  if (!parsed.educations.length) {
+    const eduMatch = prepared.match(
+      /(?:ensino\s+(?:fundamental|m[eé]dio|t[eé]cnico|superior)|bacharel|licenciatura|tecn[oó]logo)[^\n]{0,80}/i,
+    );
+    if (eduMatch) {
+      parsed.educations.push({
+        institution: "Instituição de ensino",
+        course: eduMatch[0].trim().slice(0, 180),
+        level: /superior|bacharel|licenciatura/i.test(eduMatch[0])
+          ? "SUPERIOR"
+          : /t[eé]cnico|tecn[oó]logo/i.test(eduMatch[0])
+            ? "TECNICO"
+            : /fundamental/i.test(eduMatch[0])
+              ? "FUNDAMENTAL"
+              : "MEDIO",
+        status: "CONCLUIDO",
+      });
+    }
+  }
+
+  // Metadados úteis no resumo
+  const email = extractEmail(rawText);
+  const phone = extractPhone(rawText);
+  if (email || phone) {
+    const contact = [email, phone].filter(Boolean).join(" · ");
+    if (parsed.summary && !parsed.summary.includes(contact)) {
+      parsed.summary = `${parsed.summary}\n\nContato: ${contact}`.slice(0, 1000);
+    }
   }
 
   parsed.source = "pdf";
@@ -194,7 +236,7 @@ export function hasStructuredContent(data: LinkedInProfileData): boolean {
       data.educations.length ||
       data.courses.length ||
       data.skills.length ||
-      (data.summary && data.summary.length > 40) ||
+      (data.summary && data.summary.length > 20) ||
       data.headline,
   );
 }
