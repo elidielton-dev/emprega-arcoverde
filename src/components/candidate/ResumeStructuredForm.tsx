@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Briefcase, FileText, GraduationCap, Plus, Trash2 } from "lucide-react";
 
 export type ExpItem = {
@@ -66,6 +66,28 @@ export function ResumeStructuredForm({
   const [courses, setCourses] = useState<CourseItem[]>(
     initialCourses.length ? initialCourses : [emptyCourse()],
   );
+  const [headlineValue, setHeadlineValue] = useState(headline);
+  const [summaryValue, setSummaryValue] = useState(summary);
+  const [skillsValue, setSkillsValue] = useState(skills);
+
+  // Após upload, o servidor manda props novas — sincroniza o estado (senão o form fica vazio).
+  useEffect(() => {
+    setHeadlineValue(headline);
+    setSummaryValue(summary);
+    setSkillsValue(skills);
+    setExperiences(initialExps.length ? initialExps : [emptyExp()]);
+    setEducations(initialEdus.length ? initialEdus : [emptyEdu(educationLevelDefault)]);
+    setCourses(initialCourses.length ? initialCourses : [emptyCourse()]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync only when server payload identity changes
+  }, [
+    headline,
+    summary,
+    skills,
+    educationLevelDefault,
+    JSON.stringify(initialExps),
+    JSON.stringify(initialEdus),
+    JSON.stringify(initialCourses),
+  ]);
 
   return (
     <form
@@ -89,7 +111,8 @@ export function ResumeStructuredForm({
           <input
             type="text"
             name="headline"
-            defaultValue={headline}
+            value={headlineValue}
+            onChange={(e) => setHeadlineValue(e.target.value)}
             placeholder="Ex: Assistente Administrativo | Vendas e Atendimento"
             className={inputClass}
           />
@@ -100,7 +123,8 @@ export function ResumeStructuredForm({
           <textarea
             name="summary"
             rows={4}
-            defaultValue={summary}
+            value={summaryValue}
+            onChange={(e) => setSummaryValue(e.target.value)}
             placeholder="Descreva suas principais conquistas, pontos fortes e disposição para o trabalho..."
             className={inputClass}
           />
@@ -111,7 +135,8 @@ export function ResumeStructuredForm({
           <input
             type="text"
             name="skills"
-            defaultValue={skills}
+            value={skillsValue}
+            onChange={(e) => setSkillsValue(e.target.value)}
             placeholder="Ex: Atendimento ao Cliente, Excel, Vendas, Organização"
             className={inputClass}
           />

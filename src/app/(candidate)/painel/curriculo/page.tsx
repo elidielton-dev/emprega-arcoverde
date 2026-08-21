@@ -41,9 +41,10 @@ export default async function CurriculoPage({ searchParams }: CurriculoPageProps
           educations: { orderBy: { createdAt: "asc" } },
           courses: { orderBy: { createdAt: "asc" } },
         },
+        orderBy: { versionNumber: "desc" },
         take: 1,
       },
-      documents: true,
+      documents: { orderBy: { createdAt: "desc" } },
     },
   });
 
@@ -52,7 +53,35 @@ export default async function CurriculoPage({ searchParams }: CurriculoPageProps
   }
 
   const currentResume = profile.resumeVersions[0];
-  const skillsArray = currentResume?.skillsSnapshot ? JSON.parse(currentResume.skillsSnapshot) : [];
+  let skillsArray: string[] = [];
+  try {
+    skillsArray = currentResume?.skillsSnapshot ? JSON.parse(currentResume.skillsSnapshot) : [];
+  } catch {
+    skillsArray = [];
+  }
+
+  const formKey = `${currentResume?.id || "new"}-v${currentResume?.versionNumber || 0}`;
+
+  const errorMessage =
+    searchParams.erro === "arquivo_obrigatorio"
+      ? "Selecione um arquivo PDF ou DOCX antes de enviar."
+      : searchParams.erro === "arquivo_muito_grande"
+        ? "Arquivo acima de 5 MB."
+        : searchParams.erro === "tipo_invalido"
+          ? "Só aceitamos PDF ou DOCX."
+          : searchParams.erro === "arquivo_corrompido"
+            ? "Arquivo inválido ou corrompido. Envie um PDF/DOCX legítimo."
+            : searchParams.erro === "rate_limit"
+              ? "Muitos envios em pouco tempo. Aguarde e tente de novo (máx. 5 por hora)."
+              : searchParams.erro === "limite_anexos"
+                ? "Você atingiu o limite de anexos de currículo. Remova algum ou fale com o suporte."
+                : searchParams.erro === "nao_curriculo"
+                  ? "O arquivo não parece um currículo. Envie um PDF/DOCX com dados profissionais."
+                  : searchParams.erro === "sem_texto"
+                    ? "Não conseguimos ler texto no arquivo (PDF escaneado/imagem). Use PDF com texto ou DOCX."
+                    : searchParams.erro
+                      ? "Não foi possível enviar o currículo. Tente novamente com PDF ou DOCX."
+                      : null;
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
@@ -82,31 +111,21 @@ export default async function CurriculoPage({ searchParams }: CurriculoPageProps
         <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-600" />
           <span>
-            {searchParams.sucesso === "preenchido" || searchParams.sucesso === "linkedin_anexo"
-              ? "Currículo enviado e formulário preenchido automaticamente. Revise os campos abaixo e clique em Salvar se quiser ajustar."
-              : searchParams.sucesso === "importado"
-                ? `Currículo importado: ${searchParams.exp || 0} experiência(s), ${searchParams.edu || 0} formação(ões). Revise e salve.`
-                : searchParams.sucesso === "anexo_enviado"
-                  ? searchParams.aviso === "sem_texto"
-                    ? "Anexo salvo. Imagens não preenchem o formulário — use PDF ou DOCX para preenchimento automático."
-                    : searchParams.aviso === "parse_falhou"
-                      ? "Anexo salvo, mas não foi possível ler o texto. Preencha o formulário manualmente."
-                      : "Anexo enviado. Se o PDF tiver texto, o formulário acima deve estar atualizado — atualize a página se não aparecer."
-                  : "Currículo atualizado com sucesso!"}
+            {searchParams.sucesso === "preenchido"
+              ? "Arquivo aceito e formulário preenchido automaticamente. Revise abaixo e clique em Salvar se quiser ajustar."
+              : searchParams.sucesso === "anexo_enviado"
+                ? searchParams.aviso === "pouco_dado"
+                  ? "Anexo salvo. Extraímos pouco dado estruturado — complete o formulário manualmente."
+                  : "Anexo enviado com sucesso."
+                : "Currículo atualizado com sucesso!"}
           </span>
         </div>
       )}
 
-      {searchParams.erro && (
+      {errorMessage && (
         <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
           <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-          <span>
-            {searchParams.erro === "arquivo_obrigatorio"
-              ? "Selecione um arquivo antes de enviar."
-              : searchParams.erro === "arquivo_muito_grande"
-                ? "Arquivo acima de 10 MB."
-                : "Não foi possível enviar o currículo. Tente PDF ou DOCX novamente."}
-          </span>
+          <span>{errorMessage}</span>
         </div>
       )}
 
@@ -115,11 +134,11 @@ export default async function CurriculoPage({ searchParams }: CurriculoPageProps
         <div className="border-b border-[#FEEDDF] pb-3">
           <h2 className="text-base font-bold text-[#2E221F] flex items-center gap-2">
             <Upload className="w-4 h-4 text-[#E65100]" />
-            <span>Enviar currículo (PDF ou Word)</span>
+            <span>Enviar currículo (PDF ou DOCX)</span>
           </h2>
           <p className="text-xs text-[#78716c] mt-1">
-            Ao enviar, lemos o arquivo e preenchemos automaticamente o formulário abaixo (experiência, formação,
-            cursos e habilidades). Depois você pode revisar e salvar.
+            Apenas PDF/DOCX (até 5 MB). Limitamos envios para evitar abuso. Ao enviar, preenchemos o formulário
+            abaixo automaticamente.
           </p>
         </div>
 
@@ -159,6 +178,7 @@ export default async function CurriculoPage({ searchParams }: CurriculoPageProps
 
       {/* Formulário do Currículo Estruturado */}
       <ResumeStructuredForm
+        key={formKey}
         headline={currentResume?.headline || profile.professionalHeadline || ""}
         summary={currentResume?.summary || profile.summary || ""}
         skills={skillsArray.join(", ")}

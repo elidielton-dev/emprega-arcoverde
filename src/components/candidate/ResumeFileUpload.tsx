@@ -3,6 +3,9 @@
 import React, { useRef, useState } from "react";
 import { Upload } from "lucide-react";
 
+const MAX_BYTES = 5 * 1024 * 1024;
+const ALLOWED = /\.(pdf|docx)$/i;
+
 export function ResumeFileUpload() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -16,7 +19,23 @@ export function ResumeFileUpload() {
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
-    setFileName(file ? file.name : null);
+    if (!file) {
+      setFileName(null);
+      return;
+    }
+    if (!ALLOWED.test(file.name)) {
+      setError("Envie apenas PDF ou DOCX.");
+      e.target.value = "";
+      setFileName(null);
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      setError("Arquivo acima de 5 MB.");
+      e.target.value = "";
+      setFileName(null);
+      return;
+    }
+    setFileName(file.name);
     setError(null);
   };
 
@@ -24,12 +43,17 @@ export function ResumeFileUpload() {
     const file = inputRef.current?.files?.[0];
     if (!file || file.size === 0) {
       e.preventDefault();
-      setError("Selecione um arquivo antes de enviar.");
+      setError("Selecione um arquivo PDF ou DOCX antes de enviar.");
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
+    if (!ALLOWED.test(file.name)) {
       e.preventDefault();
-      setError("Arquivo acima de 10 MB.");
+      setError("Envie apenas PDF ou DOCX.");
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      e.preventDefault();
+      setError("Arquivo acima de 5 MB.");
       return;
     }
     setSubmitting(true);
@@ -44,12 +68,11 @@ export function ResumeFileUpload() {
       className="space-y-4 rounded-2xl border-2 border-dashed border-[#FDCFA9] bg-[#FFF8F2] p-6 text-center"
     >
       <input type="hidden" name="documentType" value="RESUME" />
-      {/* Input acessível sem display:none — evita submit silencioso do HTML5 required */}
       <input
         ref={inputRef}
         type="file"
         name="file"
-        accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,application/pdf"
+        accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         className="sr-only"
         onChange={onChange}
       />
@@ -63,9 +86,9 @@ export function ResumeFileUpload() {
         >
           Clique para selecionar um arquivo
         </button>
-        <p className="text-[11px] text-[#A8A29E]">Formatos: PDF, DOCX, PNG ou JPG (até 10MB)</p>
+        <p className="text-[11px] text-[#A8A29E]">Apenas PDF ou DOCX (até 5 MB)</p>
         {fileName ? (
-          <p className="truncate rounded-lg bg-white px-3 py-2 text-[11px] font-semibold text-[#2E221F] border border-[#FEEDDF]">
+          <p className="truncate rounded-lg border border-[#FEEDDF] bg-white px-3 py-2 text-[11px] font-semibold text-[#2E221F]">
             {fileName}
           </p>
         ) : (
@@ -80,7 +103,7 @@ export function ResumeFileUpload() {
         disabled={submitting}
         className="rounded-xl bg-[#2E221F] px-5 py-2.5 text-xs font-bold text-white transition hover:bg-[#1F1614] disabled:opacity-60"
       >
-        {submitting ? "Enviando…" : "Enviar Arquivo de Currículo"}
+        {submitting ? "Enviando e preenchendo…" : "Enviar e preencher formulário"}
       </button>
     </form>
   );
