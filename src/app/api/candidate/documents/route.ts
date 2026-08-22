@@ -219,10 +219,11 @@ export async function POST(req: NextRequest) {
       fillDetails = { error: String(fillErr) };
     }
 
-    // 2) Storage é melhor esforço — não bloqueia o preenchimento
+    // 2) Storage — em produção exige Supabase; formulário estruturado já foi preenchido
     stage = "storage";
     const stored = await trySaveFile(buffer, file.name, mimeType);
     let docId: string | null = null;
+    const storageMissing = !stored;
 
     if (stored) {
       stage = "document_row";
@@ -248,7 +249,9 @@ export async function POST(req: NextRequest) {
         console.error("Falha ao registrar CandidateDocument:", docErr);
       }
     } else {
-      console.warn("Anexo não persistido (storage indisponível); currículo estruturado ainda assim aplicado.");
+      console.warn(
+        "Anexo não persistido (storage indisponível — configure SUPABASE_SERVICE_ROLE_KEY na Vercel).",
+      );
     }
 
     stage = "audit";
@@ -263,6 +266,7 @@ export async function POST(req: NextRequest) {
           fileSize: file.size,
           autoFilled: filled,
           stored: Boolean(stored),
+          storageMissing,
           ...fillDetails,
         },
       });
@@ -271,16 +275,30 @@ export async function POST(req: NextRequest) {
     }
 
     if (filled) {
-      const aviso = stored ? "" : "&aviso=anexo_nao_salvo";
-      return respond(req, `/painel/curriculo?sucesso=preenchido${aviso}&t=${Date.now()}`, {
+      if (storageMissing) {
+        return respond(
+          req,
+          `/painel/curriculo?sucesso=preenchido&aviso=storage_indisponivel&t=${Date.now()}`,
+          { filled: true, stored: false },
+        );
+      }
+      return respond(req, `/painel/curriculo?sucesso=preenchido&t=${Date.now()}`, {
         filled: true,
-        stored: Boolean(stored),
+        stored: true,
       });
+    }
+
+    if (storageMissing) {
+      return respond(
+        req,
+        `/painel/curriculo?erro=storage_indisponivel&t=${Date.now()}`,
+        { filled: false, stored: false },
+      );
     }
 
     return respond(req, `/painel/curriculo?sucesso=anexo_enviado&aviso=pouco_dado&t=${Date.now()}`, {
       filled: false,
-      stored: Boolean(stored),
+      stored: true,
     });
   } catch (error) {
     console.error("Erro no upload de documento:", stage, error);

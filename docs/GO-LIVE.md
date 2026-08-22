@@ -1,96 +1,76 @@
 # Go-live — Emprega Arcoverde
 
-Checklist operacional para deixar o portal apto a **usuário final**. Completar na ordem.
+Checklist operacional. Para **demonstração de segunda-feira**, o mínimo é `readyForDemo: true` (storage Supabase + DB + auth).
 
-## 1. E-mail (bloqueador)
+## Entrega segunda-feira (faça HOJE na Vercel)
 
-### Variáveis na Vercel (Production)
+### 1. Environment Variables → Production
 
-| Variável | Valor |
-|----------|--------|
-| `RESEND_API_KEY` | Chave `re_…` em https://resend.com/api-keys |
-| `EMAIL_FROM` | `Emprega Arcoverde <noreply@SEU-DOMINIO>` |
-| `APP_URL` | `https://empregaarcoverde.vercel.app` (ou domínio custom) |
-| `EMAIL_MOCK` | vazio / não definir |
-
-### Domínio próprio (obrigatório para cidadãos)
-
-1. Em https://resend.com/domains adicione o domínio institucional (ex.: `arcoverde.pe.gov.br` ou domínio da ACA).
-2. Publique os DNS (SPF, DKIM, etc.) que o Resend indicar.
-3. Aguarde status **Verified**.
-4. Atualize `EMAIL_FROM` para usar esse domínio.
-5. **Não** use `onboarding@resend.dev` em produção: o Resend só envia para o e-mail da conta Resend (modo teste).
-
-### Validar
-
-```bash
-npm run resend:verify -- seu-email@exemplo.com
-npm run stack:validate
-```
-
-No site: `/esqueci-a-senha` com um e-mail de cidadão cadastrado → link deve chegar e abrir `/redefinir-senha?token=…` no domínio de `APP_URL`.
-
-`GET /api/health` deve mostrar `checks.email: "resend"` (não `"mock"`) e `checks.emailFromMode: "production"` (não `"test_only"`).
-
----
-
-## 2. Storage de currículos (bloqueador)
+Copie do `.env` local (valores reais):
 
 | Variável | Valor |
 |----------|--------|
 | `NEXT_PUBLIC_SUPABASE_URL` | URL do projeto Supabase |
-| `SUPABASE_SERVICE_ROLE_KEY` | Service role (secreta) |
+| `SUPABASE_SERVICE_ROLE_KEY` | **service_role** (não a anon key) |
 | `STORAGE_BUCKET` | `emprega-arcoverde-docs` |
-| `STORAGE_DRIVER` | vazio ou `supabase` (não use `local` na Vercel) |
+| `STORAGE_DRIVER` | **apague** se estiver `local` |
+| `APP_URL` | `https://empregaarcoverde.vercel.app` |
+| `AUTH_SECRET` | já deve existir |
+| `DATABASE_URL` | já deve existir |
+| `RESEND_API_KEY` | já deve existir |
+| `CRON_SECRET` | já deve existir |
 
-### Bucket
+### 2. Redeploy
+
+Deployments → Redeploy do `main` (ou push novo).
+
+### 3. Validar
 
 ```bash
 npm run storage:ensure
+npm run prod:health
 ```
 
-No painel Supabase → Storage: bucket **privado** `emprega-arcoverde-docs`.
+Esperado:
 
-### Validar
+- `checks.storage` = `supabase`
+- `readyForDemo` = `true`
 
-1. Login candidato → `/painel/curriculo` → enviar PDF.
-2. Redeploy na Vercel (ou aguardar cold start).
-3. Abrir de novo o painel: o anexo ainda deve aparecer (não some após `/tmp`).
+### 4. Teste do PDF (2 min)
 
-`GET /api/health` → `checks.storage: "supabase"`.
-
----
-
-## 3. Secrets obrigatórios
-
-| Variável | Notas |
-|----------|--------|
-| `DATABASE_URL` | Pooler Supabase porta 6543 + `pgbouncer=true` |
-| `AUTH_SECRET` | String longa aleatória |
-| `CRON_SECRET` | Bearer do cron em `vercel.json` |
-| `DIRECT_URL` | Só local / `db push` (porta 5432) |
+1. https://empregaarcoverde.vercel.app/entrar → `candidato.demo@demo.com` / `senha123`
+2. `/painel/curriculo` → enviar 1 PDF
+3. Atualizar a página → anexo ainda listado
 
 ---
 
-## 4. Homologação por papel
+## E-mail (demo vs público)
 
-Contas seed (senha `senha123`): ver [E2E-CHECKLIST.md](./E2E-CHECKLIST.md).
+| Modo | `EMAIL_FROM` | Quem recebe |
+|------|--------------|-------------|
+| Demo / teste | `… <onboarding@resend.dev>` | Só o e-mail da conta Resend |
+| Público | `… <noreply@seu-dominio>` (domínio verificado) | Qualquer cidadão |
+
+Segunda-feira com demo: Resend teste **ok**. Recuperação para todos os cidadãos exige domínio depois.
+
+---
+
+## Critério de pronto
+
+**Demo segunda:** `readyForDemo: true` + PDF persiste após refresh.
+
+**Usuário final público:** `readyForEndUsers: true` (também `emailFromMode=production` + `appUrl=ok`).
 
 ```bash
+npm run prod:health
 npm test
-npm run rbac:audit
-npm run stack:validate
 ```
-
-Percorra o E2E com Candidato, Empresa, Sala, ACA e Prefeitura.
 
 ---
 
-## Status atual (automático)
+## Status
 
-| Ambiente | Resultado |
-|----------|-----------|
-| Local `.env` | Storage Supabase OK; Resend envia; `EMAIL_FROM` ainda `onboarding@resend.dev` (teste); `APP_URL` localhost (esperado no PC) |
-| Produção Vercel | `email=resend`, **`storage=local`** → anexos frágeis; falta espelhar `SUPABASE_SERVICE_ROLE_KEY` (+ não forçar `STORAGE_DRIVER=local`) e trocar `EMAIL_FROM` para domínio verificado |
-
-Até `readyForEndUsers: true` no health, o portal **não** deve ser anunciado como aberto ao público.
+| Ambiente | Storage | Nota |
+|----------|---------|------|
+| Local | Supabase OK (após `storage:ensure`) | Dev |
+| Vercel | Precisa das keys acima | Sem SERVICE_ROLE → `storage: missing` e upload avisa `storage_indisponivel` |

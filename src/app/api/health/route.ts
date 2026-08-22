@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import { isSupabaseStorageConfigured } from "@/lib/storage/storage";
 
 /** Healthcheck: DB + storage + e-mail + secrets. */
 export async function GET(_req: NextRequest) {
@@ -17,11 +18,18 @@ export async function GET(_req: NextRequest) {
     );
   }
 
-  const hasSupabase =
-    Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()) &&
-    Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
-  const forceLocal = process.env.STORAGE_DRIVER === "local";
-  checks.storage = forceLocal ? "local" : hasSupabase ? "supabase" : "local";
+  const hasSupabase = isSupabaseStorageConfigured();
+  const driver = process.env.STORAGE_DRIVER?.trim().toLowerCase();
+  const onVercel = Boolean(process.env.VERCEL);
+
+  if (hasSupabase) {
+    checks.storage = "supabase";
+    if (driver === "local" && onVercel) {
+      checks.storageDriverNote = "local_ignored_on_vercel";
+    }
+  } else {
+    checks.storage = onVercel || process.env.NODE_ENV === "production" ? "missing" : "local";
+  }
 
   const emailMock = process.env.EMAIL_MOCK === "true";
   const hasResend = Boolean(
@@ -31,7 +39,11 @@ export async function GET(_req: NextRequest) {
   checks.email = emailMock ? "mock" : hasResend ? "resend" : hasSmtp ? "smtp" : "mock";
 
   const from = process.env.EMAIL_FROM?.trim() || "";
-  checks.emailFromMode = /onboarding@resend\.dev/i.test(from) ? "test_only" : from ? "production" : "missing";
+  checks.emailFromMode = /onboarding@resend\.dev/i.test(from)
+    ? "test_only"
+    : from
+      ? "production"
+      : "missing";
 
   const appUrl = process.env.APP_URL?.trim() || "";
   checks.appUrl = !appUrl
@@ -42,16 +54,22 @@ export async function GET(_req: NextRequest) {
 
   checks.authSecret = process.env.AUTH_SECRET?.trim() ? "ok" : "missing";
 
-  const readyForEndUsers =
+  /** Demo segunda: DB + storage Supabase + auth. */
+  const readyForDemo =
     checks.database === "ok" &&
     checks.storage === "supabase" &&
+    checks.authSecret === "ok";
+
+  /** Público geral: também e-mail com domínio próprio + APP_URL. */
+  const readyForEndUsers =
+    readyForDemo &&
     checks.email !== "mock" &&
     checks.emailFromMode === "production" &&
-    checks.appUrl === "ok" &&
-    checks.authSecret === "ok";
+    checks.appUrl === "ok";
 
   return NextResponse.json({
     ok: true,
+    readyForDemo,
     readyForEndUsers,
     checks,
     ms: Date.now() - started,

@@ -3,9 +3,16 @@ import os from "os";
 import path from "path";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+function isProductionRuntime() {
+  return Boolean(process.env.VERCEL) || process.env.NODE_ENV === "production";
+}
+
 function localStorageDir() {
-  // No Vercel o filesystem do projeto é read-only; /tmp funciona.
-  if (process.env.VERCEL || process.env.STORAGE_USE_TMP === "1") {
+  if (process.env.STORAGE_USE_TMP === "1") {
+    return path.join(os.tmpdir(), "emprega-arcoverde-uploads");
+  }
+  // Em Vercel /tmp é efêmero — só usar em desenvolvimento local.
+  if (process.env.VERCEL) {
     return path.join(os.tmpdir(), "emprega-arcoverde-uploads");
   }
   return path.join(process.cwd(), "uploads");
@@ -36,10 +43,30 @@ function supabaseAdmin(): SupabaseClient | null {
   });
 }
 
-function useSupabaseStorage() {
-  if (process.env.STORAGE_DRIVER === "local") return false;
-  if (process.env.STORAGE_DRIVER === "supabase") return true;
+export function isSupabaseStorageConfigured() {
   return Boolean(supabaseAdmin());
+}
+
+/**
+ * Em produção/Vercel: sempre Supabase (ignora STORAGE_DRIVER=local se as keys existirem).
+ * Em desenvolvimento: Supabase se configurado; senão disco local.
+ */
+export function useSupabaseStorage() {
+  const hasKeys = isSupabaseStorageConfigured();
+  const driver = process.env.STORAGE_DRIVER?.trim().toLowerCase();
+
+  if (isProductionRuntime()) {
+    if (driver === "local" && hasKeys) {
+      console.warn(
+        "STORAGE_DRIVER=local ignorado em produção — usando Supabase (disco Vercel é efêmero).",
+      );
+    }
+    return hasKeys;
+  }
+
+  if (driver === "local") return false;
+  if (driver === "supabase") return true;
+  return hasKeys;
 }
 
 function makeFileKey(originalName: string) {
@@ -74,7 +101,9 @@ async function uploadToSupabase(
   };
 }
 
-/** Salva arquivo (Supabase; fallback local/tmp). Nunca engole o erro sem tentar fallback. */
+/**
+ * Salva arquivo. Em produção exige Supabase — não grava em /tmp como se fosse persistente.
+ */
 export async function saveFile(
   buffer: Buffer,
   originalName: string,
@@ -83,20 +112,22 @@ export async function saveFile(
   const fileKey = makeFileKey(originalName);
 
   if (useSupabaseStorage()) {
-    try {
-      return await uploadToSupabase(buffer, originalName, mimeType, fileKey);
-    } catch (err) {
-      console.warn("Storage Supabase falhou; tentando disco local/tmp:", err);
-      return saveFileLocally(buffer, originalName, mimeType, fileKey);
-    }
+    return uploadToSupabase(buffer, originalName, mimeType, fileKey);
+  }
+
+  if (isProductionRuntime()) {
+    throw new Error(
+      "STORAGE_INDISPONIVEL: configure NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY na Vercel. " +
+        "Não usamos /tmp em produção (arquivos somem após redeploy).",
+    );
   }
 
   return saveFileLocally(buffer, originalName, mimeType, fileKey);
 }
 
 /**
- * Tenta salvar; se falhar, retorna null em vez de lançar.
- * Útil para não bloquear o preenchimento do currículo.
+ * Tenta salvar; se falhar, retorna null.
+ * Em produção sem Supabase, falha de propósito (null) — sem fingir sucesso em /tmp.
  */
 export async function trySaveFile(
   buffer: Buffer,
@@ -117,6 +148,10 @@ export async function saveFileLocally(
   mimeType: string,
   forcedKey?: string,
 ): Promise<StoredFileInfo> {
+  if (isProductionRuntime() && process.env.VERCEL) {
+    throw new Error("STORAGE_INDISPONIVEL: disco local não é permitido na Vercel.");
+  }
+
   const dir = localStorageDir();
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -150,6 +185,9 @@ export async function readFile(fileKey: string): Promise<Buffer | null> {
       }
     }
   }
+  if (isProductionRuntime() && process.env.VERCEL) {
+    return null;
+  }
   return readLocalFileOnly(fileKey);
 }
 
@@ -175,7 +213,7 @@ async function readLocalFileOnly(fileKey: string): Promise<Buffer | null> {
 export async function tryDeleteFile(fileKey: string): Promise<void> {
   if (!fileKey) return;
 
-  if (useSupabaseStorage()) {
+  if (useSupabaseStorage() || isSupabaseStorageConfigured()) {
     const client = supabaseAdmin();
     if (client) {
       try {
@@ -185,6 +223,8 @@ export async function tryDeleteFile(fileKey: string): Promise<void> {
       }
     }
   }
+
+  if (isProductionRuntime() && process.env.VERCEL) return;
 
   const candidates = [
     path.join(localStorageDir(), fileKey),

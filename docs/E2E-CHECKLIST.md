@@ -6,27 +6,33 @@ Guia de infra: [GO-LIVE.md](./GO-LIVE.md).
 
 ## Infra
 
-- [ ] `GET /api/health` → `ok: true`, `readyForEndUsers: true`
-- [ ] `checks.email` = `resend` (ou `smtp`) e `emailFromMode` = `production` (não `test_only`)
-- [ ] `checks.storage` = `supabase` (não `local` na Vercel)
+- [ ] `GET /api/health` → `readyForDemo: true` (mínimo segunda) / `readyForEndUsers: true` (público)
+- [ ] `checks.storage` = `supabase` (nunca `local` ou `missing` na Vercel)
+- [ ] `checks.email` = `resend` (ou `smtp`); para público: `emailFromMode` = `production`
 - [ ] `checks.appUrl` = `ok` e `authSecret` = `ok`
-- [ ] Reset de senha chega na caixa real de um cidadão
+- [ ] Reset de senha chega na caixa real (só após domínio Resend)
 - [ ] Upload de anexo no currículo persiste após refresh/redeploy
 - [ ] Cron: Vercel Cron diário em `/api/cron/jobs` com `Authorization: Bearer $CRON_SECRET`
-- [ ] `npm run stack:validate` local apontando ao mesmo projeto → sem falhas
+- [ ] `npm run stack:validate` / `npm run prod:health`
 
-### Snapshot automático (código + produção)
+### Entrega segunda-feira
+
+1. Colar na Vercel: `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `STORAGE_BUCKET=emprega-arcoverde-docs`
+2. Remover `STORAGE_DRIVER=local` se existir
+3. Redeploy + `npm run prod:health` → `readyForDemo: true`
+4. Testar PDF com `candidato.demo@demo.com` / `senha123`
+
+> Sem as keys do Supabase na Vercel, o código **não** grava mais em `/tmp` (evita anexo fantasma). A UI mostra `storage_indisponivel`.
+
+### Snapshot automático (código)
 
 | Check | Status |
 |-------|--------|
-| Testes unitários / RBAC audit (`npm test`) | Automatizado no CI/local |
-| Empresa não cria vaga (API 403 + RBAC) | Verificado no código |
-| Sala bloqueada em vagas/CMS/indicadores | Verificado no middleware |
-| CMS + links no menu admin e nav pública | Verificado no código |
-| Entrevista respeita preferência de e-mail | Verificado no código |
-| LGPD apaga arquivos do storage | Verificado no código |
-
-> Em 2026-08-21 a produção `empregaarcoverde.vercel.app` respondia `email=resend`, `storage=local` → **ainda não** `readyForEndUsers`. Corrija `SUPABASE_SERVICE_ROLE_KEY` + bucket e `EMAIL_FROM` com domínio verificado.
+| Testes / RBAC audit | `npm test` |
+| Storage exige Supabase em produção | Código |
+| Mensagem `storage_indisponivel` no currículo | Código |
+| Empresa não cria vaga | Código |
+| CMS + links no menu | Código |
 
 ## Público
 
